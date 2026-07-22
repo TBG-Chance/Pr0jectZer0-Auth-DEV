@@ -7,6 +7,8 @@
         android:label="Pr0jectZer0 Auth"
         android:allowBackup="false"
         android:fullBackupContent="false"
+        <!-- Closed-beta LAN compatibility only. Replace with pinned HTTPS before production. -->
+        android:usesCleartextTraffic="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

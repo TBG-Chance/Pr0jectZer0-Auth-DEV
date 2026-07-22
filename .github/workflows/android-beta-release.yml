@@ -1,0 +1,101 @@
+name: Android Beta Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version name, for example 0.6.0-beta.1"
+        required: true
+        default: "0.6.0-beta.1"
+        type: string
+      build_number:
+        description: "Google Play version code; must increase for every upload"
+        required: true
+        default: "1"
+        type: string
+      upload_to_play:
+        description: "Upload the signed bundle to Google Play Internal Testing"
+        required: true
+        default: false
+        type: boolean
+      release_status:
+        description: "Use draft until the Play listing and first release are configured"
+        required: true
+        default: "draft"
+        type: choice
+        options:
+          - draft
+          - completed
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.7"
+          channel: stable
+          cache: true
+
+      - name: Restore protected Android upload key
+        shell: pwsh
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+        run: |
+          if (-not $env:KEYSTORE_BASE64 -or -not $env:STORE_PASSWORD -or -not $env:KEY_PASSWORD -or -not $env:KEY_ALIAS) {
+            throw "Configure all four Android upload-key secrets before building a beta."
+          }
+          [IO.File]::WriteAllBytes("android/app/upload-keystore.jks", [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          $lines = @(
+            "storePassword=$env:STORE_PASSWORD",
+            "keyPassword=$env:KEY_PASSWORD",
+            "keyAlias=$env:KEY_ALIAS",
+            "storeFile=upload-keystore.jks"
+          )
+          [IO.File]::WriteAllLines("android/key.properties", $lines, (New-Object Text.UTF8Encoding($false)))
+
+      - name: Restore dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build signed Android App Bundle
+        run: >-
+          flutter build appbundle --release
+          --build-name "${{ inputs.version_name }}"
+          --build-number "${{ inputs.build_number }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pr0jectZer0-Auth-${{ inputs.version_name }}-${{ inputs.build_number }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Upload to Google Play Internal Testing
+        if: ${{ inputs.upload_to_play }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.pr0jectzer0.pr0jectzer0_auth
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          tracks: internal
+          status: ${{ inputs.release_status }}
+          changesNotSentForReview: true
