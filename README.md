@@ -15,3 +15,15 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Secure storage foundation
+
+Sensitive authentication values are stored through `SecureStorageService`.
+The production implementation uses `flutter_secure_storage`, backed by Android
+KeyStore and Apple Keychain. PINs are never stored directly: the app stores a
+randomly salted PBKDF2-HMAC-SHA256 verifier and compares derived values in
+constant time.
+
+Android auto-backup is disabled because KeyStore keys are device-bound and
+restoring encrypted preferences to another device can make them unreadable.
+The Android minimum SDK is 23, matching the secure-storage dependency.

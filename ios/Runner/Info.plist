@@ -66,5 +66,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Pr0jectZer0 Auth uses the camera to scan trusted-system enrollment QR codes.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Pr0jectZer0 Auth uses Face ID to approve dashboard sign-ins.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pr0jectZer0 Auth connects to enrolled Pr0jectZer0 servers on your local network.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

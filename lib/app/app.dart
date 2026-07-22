@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../features/home/home_screen.dart';
+import '../features/splash/splash_screen.dart';
 import 'constants.dart';
 import 'theme/app_theme.dart';
 
@@ -13,7 +13,7 @@ class Pr0jectZer0AuthApp extends StatelessWidget {
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }
