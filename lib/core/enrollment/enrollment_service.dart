@@ -7,7 +7,7 @@ abstract interface class EnrollmentService {
 
   Future<void> initialize();
 
-  EnrollmentInvitation parseInvitation(String payload);
+  Future<EnrollmentInvitation> parseInvitation(String payload);
 
   Future<DeviceEnrollmentRequest> prepareEnrollment({
     required EnrollmentInvitation invitation,
@@ -18,6 +18,7 @@ abstract interface class EnrollmentService {
   Future<void> submitEnrollment({
     required EnrollmentInvitation invitation,
     required DeviceEnrollmentRequest request,
+    String? activationPin,
   });
 
   Future<void> completeEnrollment({

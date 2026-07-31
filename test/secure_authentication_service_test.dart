@@ -49,6 +49,20 @@ void main() {
       expect(result.errorCode, 'invalid_pin');
     });
 
+    test('locks PIN authentication after five failed attempts', () async {
+      await service.createPin('739204');
+
+      for (var attempt = 0; attempt < 4; attempt++) {
+        final result = await service.authenticateWithPin('000000');
+        expect(result.errorCode, 'invalid_pin');
+      }
+      final locked = await service.authenticateWithPin('000000');
+      expect(locked.errorCode, 'pin_locked');
+
+      final correctWhileLocked = await service.authenticateWithPin('739204');
+      expect(correctWhileLocked.errorCode, 'pin_locked');
+    });
+
     test('credential remains usable by a recreated auth service', () async {
       await service.createPin('739204');
       await service.dispose();

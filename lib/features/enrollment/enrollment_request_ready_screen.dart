@@ -10,11 +10,13 @@ class EnrollmentRequestReadyScreen extends StatefulWidget {
   const EnrollmentRequestReadyScreen({
     required this.invitation,
     required this.request,
+    this.activationPin,
     super.key,
   });
 
   final EnrollmentInvitation invitation;
   final DeviceEnrollmentRequest request;
+  final String? activationPin;
 
   @override
   State<EnrollmentRequestReadyScreen> createState() =>
@@ -40,13 +42,27 @@ class _EnrollmentRequestReadyScreenState
       _error = null;
     });
     try {
-      await AppServices.of(context).enrollment.submitEnrollment(
+      final services = AppServices.of(context);
+      if (widget.invitation.requiresActivationPin &&
+          widget.activationPin != null) {
+        if (!await services.authentication.hasPin()) {
+          await services.authentication.createPin(widget.activationPin!);
+        }
+      }
+      await services.enrollment.submitEnrollment(
         invitation: widget.invitation,
         request: widget.request,
+        activationPin: widget.activationPin,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Authentication device registered.')),
+        SnackBar(
+          content: Text(
+            widget.invitation.requiresActivationPin
+                ? 'Administrator access activated.'
+                : 'Authentication device registered.',
+          ),
+        ),
       );
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on Object catch (error) {
@@ -61,7 +77,13 @@ class _EnrollmentRequestReadyScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registration Ready')),
+      appBar: AppBar(
+        title: Text(
+          widget.invitation.requiresActivationPin
+              ? 'Activation Ready'
+              : 'Registration Ready',
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -74,13 +96,17 @@ class _EnrollmentRequestReadyScreenState
                     const Icon(Icons.task_alt, size: 68),
                     const SizedBox(height: 18),
                     Text(
-                      'Signed request created',
+                      widget.invitation.requiresActivationPin
+                          ? 'Secure activation prepared'
+                          : 'Signed request created',
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '${widget.invitation.displayName} has been validated and the device registration request is ready.',
+                      widget.invitation.requiresActivationPin
+                          ? '${widget.invitation.displayName} has been validated. Activating will register this phone and replace the administrator PIN.'
+                          : '${widget.invitation.displayName} has been validated and the device registration request is ready.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 22),
@@ -111,7 +137,11 @@ class _EnrollmentRequestReadyScreenState
                     SizedBox(
                       width: double.infinity,
                       child: PZButton(
-                        text: _submitting ? 'Registering…' : 'Register Device',
+                        text: _submitting
+                            ? 'Submitting…'
+                            : widget.invitation.requiresActivationPin
+                            ? 'Activate Access'
+                            : 'Register Device',
                         icon: Icons.verified_user_outlined,
                         onPressed: _submitting ? null : _submit,
                       ),

@@ -13,7 +13,8 @@ class EnrollmentScannerScreen extends StatefulWidget {
   const EnrollmentScannerScreen({super.key});
 
   @override
-  State<EnrollmentScannerScreen> createState() => _EnrollmentScannerScreenState();
+  State<EnrollmentScannerScreen> createState() =>
+      _EnrollmentScannerScreenState();
 }
 
 class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
@@ -47,6 +48,7 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
   }
 
   Future<void> _processPayload(String payload) async {
+	final enrollment = AppServices.of(context).enrollment;
     setState(() {
       _processing = true;
       _captured = false;
@@ -55,8 +57,7 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
     await _controller.stop();
 
     try {
-      final invitation =
-          AppServices.of(context).enrollment.parseInvitation(payload);
+      final invitation = await enrollment.parseInvitation(payload);
       await HapticFeedback.mediumImpact();
       if (!mounted) return;
       setState(() => _captured = true);
@@ -179,10 +180,9 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withValues(alpha: .96),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: .96),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppColors.border),
                       boxShadow: const [
@@ -205,8 +205,8 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
                                 _captured
                                     ? 'captured'
                                     : _processing
-                                        ? 'processing'
-                                        : 'ready',
+                                    ? 'processing'
+                                    : 'ready',
                               ),
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -222,8 +222,8 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
                                     _captured
                                         ? 'Enrollment code captured'
                                         : _processing
-                                            ? 'Validating enrollment code…'
-                                            : 'Position the enrollment QR code inside the frame.',
+                                        ? 'Validating enrollment code…'
+                                        : 'Position the enrollment QR code inside the frame.',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
@@ -259,9 +259,8 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
                           const SizedBox(height: 4),
                           Text(
                             'Pr0jectZer0 Auth  •  The Bostrom Group',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -337,10 +336,7 @@ class _ScannerOverlayPainter extends CustomPainter {
       ..fillType = PathFillType.evenOdd
       ..addRect(Offset.zero & size)
       ..addRRect(roundedFrame);
-    canvas.drawPath(
-      shadePath,
-      Paint()..color = const Color(0x99000000),
-    );
+    canvas.drawPath(shadePath, Paint()..color = const Color(0x99000000));
 
     final glowPaint = Paint()
       ..color = color.withValues(alpha: .22 * glowOpacity)

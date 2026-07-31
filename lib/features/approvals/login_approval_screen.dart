@@ -146,13 +146,62 @@ class _LoginApprovalScreenState extends State<LoginApprovalScreen> {
                       label: 'Address',
                       value: challenge.trustedSystem.serverBaseUrl,
                     ),
+                    if (challenge.hasBrowserContext) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('Compare with the browser'),
+                            const SizedBox(height: 6),
+                            SelectableText(
+                              _formatCode(challenge.verificationCode),
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 5,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _Detail(
+                        label: 'Browser',
+                        value:
+                            '${challenge.browserName} on ${challenge.operatingSystem}',
+                      ),
+                      _Detail(
+                        label: 'Network',
+                        value: challenge.networkAddress,
+                      ),
+                      _Detail(
+                        label: 'Requested',
+                        value: challenge.requestedAt.toLocal().toString(),
+                      ),
+                    ],
                     _Detail(
                       label: 'Expires',
                       value: challenge.expiresAt.toLocal().toString(),
                     ),
                     const SizedBox(height: 8),
+                    Text(
+                      challenge.hasBrowserContext
+                          ? 'Approve only if you started this sign-in and the six-digit code matches the browser. Deny the request if any detail is unfamiliar.'
+                          : 'This older login code does not include browser comparison details. Approve only if you started this sign-in.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     const Text(
-                      'Pr0jectZer0 Auth will require biometrics or your local app PIN, then sign this one-time challenge. Your PIN and private key never leave this device.',
+                      'PZ Auth will require biometrics or your local app PIN, then sign this one-time challenge. Your PIN and private key never leave this device.',
                       textAlign: TextAlign.center,
                     ),
                     if (_error != null) ...[
@@ -193,6 +242,11 @@ class _LoginApprovalScreenState extends State<LoginApprovalScreen> {
         ),
       ),
     );
+  }
+
+  String _formatCode(String value) {
+    if (value.length != 6) return value;
+    return '${value.substring(0, 3)} ${value.substring(3)}';
   }
 }
 

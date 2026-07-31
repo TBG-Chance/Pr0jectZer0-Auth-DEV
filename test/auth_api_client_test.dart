@@ -39,4 +39,50 @@ void main() {
       ),
     );
   });
+
+  for (final scenario in <(String, String)>[
+    (
+      'administrator_invitation',
+      '/api/v1/auth/administrator-invitations/activate',
+    ),
+    ('lost_device_recovery', '/api/v1/auth/recovery/activate'),
+  ]) {
+    test('routes ${scenario.$1} activation without client metadata', () async {
+      late http.Request captured;
+      final client = HttpAuthApiClient(
+        client: MockClient((request) async {
+          captured = request;
+          return http.Response(
+            jsonEncode(<String, Object>{
+              'device': <String, Object>{
+                'id': 'device-2',
+                'administrator_id': 'admin-2',
+                'name': 'Test Phone',
+                'enrolled_at': DateTime.utc(2026).toIso8601String(),
+              },
+            }),
+            200,
+            headers: const <String, String>{'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final device = await client.completeEnrollment(
+        serverBaseUrl: Uri.parse('https://security.example.com'),
+        payload: <String, Object>{
+          '_activation_kind': scenario.$1,
+          'challenge_id': 'challenge-1',
+          'activation_secret': 'secret-1',
+          'pin': '728194',
+          'device_name': 'Test Phone',
+          'key_algorithm': 'ed25519',
+          'public_key': 'public-key',
+        },
+      );
+
+      expect(captured.url.path, scenario.$2);
+      expect(jsonDecode(captured.body), isNot(contains('_activation_kind')));
+      expect(device.administratorId, 'admin-2');
+    });
+  }
 }

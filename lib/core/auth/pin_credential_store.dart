@@ -7,14 +7,9 @@ import '../storage/secure_storage_keys.dart';
 import '../storage/secure_storage_service.dart';
 
 class PinCredentialStore {
-  PinCredentialStore(
-    this._storage, {
-    int iterations = 210000,
-  })  : _algorithm = Pbkdf2.hmacSha256(
-          iterations: iterations,
-          bits: 256,
-        ),
-        _iterations = iterations;
+  PinCredentialStore(this._storage, {int iterations = 210000})
+    : _algorithm = Pbkdf2.hmacSha256(iterations: iterations, bits: 256),
+      _iterations = iterations;
 
   static const int _recordVersion = 1;
   static const int _saltLength = 32;
@@ -37,6 +32,39 @@ class PinCredentialStore {
   Future<void> replace(String pin) => _save(pin);
 
   Future<bool> verify(String pin) async {
+    final result = await verifyWithLockout(pin);
+    return result.valid;
+  }
+
+  Future<PinVerificationResult> verifyWithLockout(
+    String pin, {
+    int maxAttempts = 5,
+    Duration lockoutDuration = const Duration(minutes: 15),
+    DateTime? now,
+  }) async {
+    final checkedAt = (now ?? DateTime.now()).toUtc();
+    final state = await _readLockout();
+    if (state.lockedUntil != null && checkedAt.isBefore(state.lockedUntil!)) {
+      return PinVerificationResult.locked(state.lockedUntil!);
+    }
+    final valid = await _verifyCredential(pin);
+    if (valid) {
+      await _storage.delete(SecureStorageKeys.pinLockout);
+      return const PinVerificationResult.valid();
+    }
+    final attempts = state.lockedUntil != null ? 1 : state.failedAttempts + 1;
+    if (attempts >= maxAttempts) {
+      final lockedUntil = checkedAt.add(lockoutDuration);
+      await _writeLockout(
+        _PinLockoutRecord(failedAttempts: attempts, lockedUntil: lockedUntil),
+      );
+      return PinVerificationResult.locked(lockedUntil);
+    }
+    await _writeLockout(_PinLockoutRecord(failedAttempts: attempts));
+    return PinVerificationResult.invalid(maxAttempts - attempts);
+  }
+
+  Future<bool> _verifyCredential(String pin) async {
     final encoded = await _storage.read(SecureStorageKeys.pinCredential);
     if (encoded == null) return false;
 
@@ -68,6 +96,7 @@ class PinCredentialStore {
       key: SecureStorageKeys.pinCredential,
       value: record.encode(),
     );
+    await _storage.delete(SecureStorageKeys.pinLockout);
   }
 
   Future<List<int>> _derive(
@@ -97,6 +126,59 @@ class PinCredentialStore {
       difference |= left[index] ^ right[index];
     }
     return difference == 0;
+  }
+}
+
+class PinVerificationResult {
+  const PinVerificationResult._({
+    required this.valid,
+    this.lockedUntil,
+    this.remainingAttempts,
+  });
+  const PinVerificationResult.valid() : this._(valid: true);
+  const PinVerificationResult.invalid(int remaining)
+    : this._(valid: false, remainingAttempts: remaining);
+  const PinVerificationResult.locked(DateTime until)
+    : this._(valid: false, lockedUntil: until);
+  final bool valid;
+  final DateTime? lockedUntil;
+  final int? remainingAttempts;
+  bool get locked => lockedUntil != null;
+}
+
+class _PinLockoutRecord {
+  const _PinLockoutRecord({required this.failedAttempts, this.lockedUntil});
+  final int failedAttempts;
+  final DateTime? lockedUntil;
+}
+
+extension on PinCredentialStore {
+  Future<_PinLockoutRecord> _readLockout() async {
+    final encoded = await _storage.read(SecureStorageKeys.pinLockout);
+    if (encoded == null) return const _PinLockoutRecord(failedAttempts: 0);
+    try {
+      final value = jsonDecode(encoded) as Map<String, dynamic>;
+      final rawLockedUntil = value['lockedUntil'] as String?;
+      return _PinLockoutRecord(
+        failedAttempts: value['failedAttempts'] as int? ?? 0,
+        lockedUntil: rawLockedUntil == null
+            ? null
+            : DateTime.parse(rawLockedUntil).toUtc(),
+      );
+    } on Object {
+      await _storage.delete(SecureStorageKeys.pinLockout);
+      return const _PinLockoutRecord(failedAttempts: 0);
+    }
+  }
+
+  Future<void> _writeLockout(_PinLockoutRecord record) {
+    return _storage.write(
+      key: SecureStorageKeys.pinLockout,
+      value: jsonEncode(<String, Object?>{
+        'failedAttempts': record.failedAttempts,
+        'lockedUntil': record.lockedUntil?.toUtc().toIso8601String(),
+      }),
+    );
   }
 }
 

@@ -55,11 +55,15 @@ class HttpAuthApiClient implements AuthApiClient {
     required Uri serverBaseUrl,
     required Map<String, Object> payload,
   }) async {
-    final response = await _post(
-      serverBaseUrl,
-      '/api/v1/auth/enrollment/complete',
-      payload,
-    );
+    final requestPayload = Map<String, Object>.from(payload);
+    final activationKind = requestPayload.remove('_activation_kind');
+    final endpointPath = switch (activationKind) {
+      'administrator_invitation' =>
+        '/api/v1/auth/administrator-invitations/activate',
+      'lost_device_recovery' => '/api/v1/auth/recovery/activate',
+      _ => '/api/v1/auth/enrollment/complete',
+    };
+    final response = await _post(serverBaseUrl, endpointPath, requestPayload);
     final device = response['device'];
     if (device is! Map) {
       throw const AuthApiException(

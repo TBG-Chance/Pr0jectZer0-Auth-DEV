@@ -7,6 +7,8 @@ class TrustedSystem {
     required this.productType,
     required this.serverBaseUrl,
     required this.publicKey,
+    this.fingerprint = '',
+    this.administratorId = '',
     required this.enrolledAt,
     required this.trusted,
   });
@@ -18,6 +20,8 @@ class TrustedSystem {
   final String productType;
   final String serverBaseUrl;
   final String publicKey;
+  final String fingerprint;
+  final String administratorId;
   final DateTime enrolledAt;
   final bool trusted;
 
@@ -30,20 +34,24 @@ class TrustedSystem {
       productType: json['productType'] as String,
       serverBaseUrl: json['serverBaseUrl'] as String,
       publicKey: json['publicKey'] as String,
+      fingerprint: json['fingerprint'] as String? ?? '',
+      administratorId: json['administratorId'] as String? ?? '',
       enrolledAt: DateTime.parse(json['enrolledAt'] as String).toUtc(),
       trusted: json['trusted'] as bool,
     );
   }
 
   Map<String, Object> toJson() => <String, Object>{
-        'id': id,
-        'systemId': systemId,
-        'displayName': displayName,
-        'organization': organization,
-        'productType': productType,
-        'serverBaseUrl': serverBaseUrl,
-        'publicKey': publicKey,
-        'enrolledAt': enrolledAt.toUtc().toIso8601String(),
-        'trusted': trusted,
-      };
+    'id': id,
+    'systemId': systemId,
+    'displayName': displayName,
+    'organization': organization,
+    'productType': productType,
+    'serverBaseUrl': serverBaseUrl,
+    'publicKey': publicKey,
+    'fingerprint': fingerprint,
+    'administratorId': administratorId,
+    'enrolledAt': enrolledAt.toUtc().toIso8601String(),
+    'trusted': trusted,
+  };
 }

@@ -36,7 +36,7 @@ class AboutScreen extends StatelessWidget {
               ),
               SizedBox(height: 16),
               Text(
-                'A product of The Bostrom Group.',
+                'Published by The Bostrom Group, LLC.',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ],

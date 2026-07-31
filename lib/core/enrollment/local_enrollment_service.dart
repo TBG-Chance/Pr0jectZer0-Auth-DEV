@@ -62,6 +62,7 @@ class LocalEnrollmentService implements EnrollmentService {
   Future<void> submitEnrollment({
     required EnrollmentInvitation invitation,
     required DeviceEnrollmentRequest request,
+    String? activationPin,
   }) async {
     _ensureReady();
     if (invitation.isExpired) {
@@ -70,7 +71,7 @@ class LocalEnrollmentService implements EnrollmentService {
     try {
       final device = await _api.completeEnrollment(
         serverBaseUrl: invitation.serverBaseUrl,
-        payload: request.toApiJson(invitation),
+        payload: request.toApiJson(invitation, activationPin: activationPin),
       );
       await completeEnrollment(
         invitation: invitation,
@@ -96,7 +97,7 @@ class LocalEnrollmentService implements EnrollmentService {
   }
 
   @override
-  EnrollmentInvitation parseInvitation(String payload) {
+  Future<EnrollmentInvitation> parseInvitation(String payload) {
     _ensureReady();
     return _parser.parse(payload);
   }
@@ -199,6 +200,8 @@ class LocalEnrollmentService implements EnrollmentService {
       productType: invitation.productType,
       serverBaseUrl: invitation.serverBaseUrl.toString(),
       publicKey: confirmation.serverPublicKey,
+      fingerprint: invitation.serverFingerprint ?? '',
+      administratorId: invitation.administratorId ?? '',
       enrolledAt: confirmation.confirmedAt,
       trusted: true,
     );

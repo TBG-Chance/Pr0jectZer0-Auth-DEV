@@ -11,6 +11,22 @@ enum EnrollmentStatus {
   failed,
 }
 
+enum EnrollmentPurpose {
+  deviceEnrollment('device_enrollment'),
+  administratorInvitation('administrator_invitation'),
+  lostDeviceRecovery('lost_device_recovery');
+
+  const EnrollmentPurpose(this.wireValue);
+  final String wireValue;
+
+  static EnrollmentPurpose fromWireValue(String? value) {
+    return EnrollmentPurpose.values.firstWhere(
+      (purpose) => purpose.wireValue == value,
+      orElse: () => EnrollmentPurpose.deviceEnrollment,
+    );
+  }
+}
+
 class EnrollmentInvitation {
   const EnrollmentInvitation({
     required this.version,
@@ -24,6 +40,14 @@ class EnrollmentInvitation {
     required this.issuedAt,
     required this.expiresAt,
     this.serverPublicKey,
+    this.serverFingerprint,
+    this.serverSignature,
+    this.purpose = EnrollmentPurpose.deviceEnrollment,
+    this.administratorId,
+    this.administratorFirstName,
+    this.administratorLastName,
+    this.administratorPosition,
+    this.administratorRole,
   });
 
   final int version;
@@ -37,8 +61,18 @@ class EnrollmentInvitation {
   final DateTime issuedAt;
   final DateTime expiresAt;
   final String? serverPublicKey;
+  final String? serverFingerprint;
+  final String? serverSignature;
+  final EnrollmentPurpose purpose;
+  final String? administratorId;
+  final String? administratorFirstName;
+  final String? administratorLastName;
+  final String? administratorPosition;
+  final String? administratorRole;
 
   bool get isExpired => DateTime.now().toUtc().isAfter(expiresAt);
+  bool get requiresActivationPin =>
+      purpose != EnrollmentPurpose.deviceEnrollment;
 
   factory EnrollmentInvitation.fromJson(Map<String, dynamic> json) {
     return EnrollmentInvitation(
@@ -53,6 +87,14 @@ class EnrollmentInvitation {
       issuedAt: DateTime.parse(json['issuedAt'] as String).toUtc(),
       expiresAt: DateTime.parse(json['expiresAt'] as String).toUtc(),
       serverPublicKey: json['serverPublicKey'] as String?,
+      serverFingerprint: json['serverFingerprint'] as String?,
+      serverSignature: json['serverSignature'] as String?,
+      purpose: EnrollmentPurpose.fromWireValue(json['purpose'] as String?),
+      administratorId: json['administratorId'] as String?,
+      administratorFirstName: json['administratorFirstName'] as String?,
+      administratorLastName: json['administratorLastName'] as String?,
+      administratorPosition: json['administratorPosition'] as String?,
+      administratorRole: json['administratorRole'] as String?,
     );
   }
 
@@ -68,6 +110,17 @@ class EnrollmentInvitation {
     'issuedAt': issuedAt.toUtc().toIso8601String(),
     'expiresAt': expiresAt.toUtc().toIso8601String(),
     if (serverPublicKey != null) 'serverPublicKey': serverPublicKey,
+    if (serverFingerprint != null) 'serverFingerprint': serverFingerprint,
+    if (serverSignature != null) 'serverSignature': serverSignature,
+    'purpose': purpose.wireValue,
+    if (administratorId != null) 'administratorId': administratorId,
+    if (administratorFirstName != null)
+      'administratorFirstName': administratorFirstName,
+    if (administratorLastName != null)
+      'administratorLastName': administratorLastName,
+    if (administratorPosition != null)
+      'administratorPosition': administratorPosition,
+    if (administratorRole != null) 'administratorRole': administratorRole,
   };
 }
 
@@ -115,14 +168,22 @@ class DeviceEnrollmentRequest {
 
   String toJsonString() => jsonEncode(toJson());
 
-  Map<String, Object> toApiJson(EnrollmentInvitation invitation) =>
-      <String, Object>{
-        'challenge_id': invitation.enrollmentId,
-        'enrollment_secret': invitation.nonce,
-        'device_name': deviceName,
-        'key_algorithm': publicKey.algorithm.toLowerCase(),
-        'public_key': publicKey.publicKeyBase64Url,
-      };
+  Map<String, Object> toApiJson(
+    EnrollmentInvitation invitation, {
+    String? activationPin,
+  }) => <String, Object>{
+    'challenge_id': invitation.enrollmentId,
+    if (invitation.purpose == EnrollmentPurpose.deviceEnrollment)
+      'enrollment_secret': invitation.nonce
+    else ...<String, Object>{
+      '_activation_kind': invitation.purpose.wireValue,
+      'activation_secret': invitation.nonce,
+      'pin': activationPin ?? '',
+    },
+    'device_name': deviceName,
+    'key_algorithm': publicKey.algorithm.toLowerCase(),
+    'public_key': publicKey.publicKeyBase64Url,
+  };
 }
 
 class EnrollmentConfirmation {

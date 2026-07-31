@@ -87,10 +87,19 @@ class SecureAuthenticationService implements AuthenticationService {
       );
     }
 
-    if (!await _pinCredentials.verify(pin)) {
-      return const AuthenticationResult.failure(
+    final verification = await _pinCredentials.verifyWithLockout(pin);
+    if (verification.locked) {
+      return AuthenticationResult.failure(
+        errorCode: 'pin_locked',
+        message:
+            'Too many failed attempts. Try again after ${verification.lockedUntil!.toLocal()}.',
+      );
+    }
+    if (!verification.valid) {
+      return AuthenticationResult.failure(
         errorCode: 'invalid_pin',
-        message: 'The PIN is incorrect.',
+        message:
+            'The PIN is incorrect. ${verification.remainingAttempts} attempts remain.',
       );
     }
 

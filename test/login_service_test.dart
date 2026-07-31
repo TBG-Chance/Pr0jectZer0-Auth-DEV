@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pr0jectzer0_auth/core/crypto/crypto_models.dart';
 import 'package:pr0jectzer0_auth/core/crypto/crypto_service.dart';
@@ -35,6 +36,7 @@ void main() {
         crypto: crypto,
         trustedSystems: store,
         api: api,
+        allowLegacyInsecure: true,
       );
       final expiresAt = DateTime.now().toUtc().add(const Duration(minutes: 1));
       final payload = Uri(
@@ -62,6 +64,193 @@ void main() {
       await storage.dispose();
     },
   );
+
+  test('verifies and approves a server-signed version 2 login code', () async {
+    final storage = InMemorySecureStorageService();
+    await storage.initialize();
+    final algorithm = Ed25519();
+    final keyPair = await algorithm.newKeyPair();
+    final publicKey = await keyPair.extractPublicKey();
+    final encodedPublicKey = base64Url
+        .encode(publicKey.bytes)
+        .replaceAll('=', '');
+    final store = TrustedSystemStore(storage);
+    await store.writeAll(<TrustedSystem>[
+      TrustedSystem(
+        id: 'authdev-v2',
+        systemId: 'server-v2',
+        displayName: 'Pr0jectZer0 Secure Lab',
+        organization: 'The Bostrom Group, LLC',
+        productType: 'Pr0jectZer0 management platform',
+        serverBaseUrl: 'https://security.example.test:8443',
+        publicKey: encodedPublicKey,
+        enrolledAt: DateTime.now().toUtc(),
+        trusted: true,
+      ),
+    ]);
+    final crypto = _CapturingCryptoService();
+    final api = _CapturingAuthApiClient();
+    final service = RegisteredDeviceLoginService(
+      crypto: crypto,
+      trustedSystems: store,
+      api: api,
+    );
+    final now = DateTime.now().toUtc();
+    final expiresAt = DateTime.fromMillisecondsSinceEpoch(
+      (now.add(const Duration(minutes: 2)).millisecondsSinceEpoch ~/ 1000) *
+          1000,
+      isUtc: true,
+    );
+    final challengePayload = <String>[
+      'pr0jectzer0-login-challenge-v2',
+      '2',
+      'server-v2',
+      'https://security.example.test:8443',
+      'login-v2',
+      'nonce-v2',
+      (expiresAt.millisecondsSinceEpoch ~/ 1000).toString(),
+    ].join('\n');
+    final serverSignature = await algorithm.sign(
+      utf8.encode(challengePayload),
+      keyPair: keyPair,
+    );
+    final payload = Uri(
+      scheme: 'pr0jectzer0',
+      host: 'login',
+      queryParameters: <String, String>{
+        'v': '2',
+        'server_id': 'server-v2',
+        'server_url': 'https://security.example.test:8443',
+        'challenge_id': 'login-v2',
+        'nonce': 'nonce-v2',
+        'expires_at': expiresAt.toIso8601String(),
+        'signature': base64Url
+            .encode(serverSignature.bytes)
+            .replaceAll('=', ''),
+      },
+    ).toString();
+
+    final challenge = await service.parseChallenge(payload);
+    await service.approve(challenge);
+
+    final unixSeconds = expiresAt.millisecondsSinceEpoch ~/ 1000;
+    expect(
+      utf8.decode(crypto.lastSignedPayload!),
+      'pr0jectzer0-login-v2\nserver-v2\nhttps://security.example.test:8443\n'
+      'login-v2\nnonce-v2\n$unixSeconds',
+    );
+    expect(api.deviceId, 'authdev-v2');
+    await storage.dispose();
+  });
+
+  test('verifies, displays, and signs version 3 browser context', () async {
+    final storage = InMemorySecureStorageService();
+    await storage.initialize();
+    final algorithm = Ed25519();
+    final keyPair = await algorithm.newKeyPair();
+    final publicKey = await keyPair.extractPublicKey();
+    final encodedPublicKey = base64Url
+        .encode(publicKey.bytes)
+        .replaceAll('=', '');
+    final store = TrustedSystemStore(storage);
+    await store.writeAll(<TrustedSystem>[
+      TrustedSystem(
+        id: 'authdev-v3',
+        systemId: 'server-v3',
+        displayName: 'Pr0jectZer0 Production',
+        organization: 'The Bostrom Group, LLC',
+        productType: 'Pr0jectZer0 management platform',
+        serverBaseUrl: 'https://security.example.test',
+        publicKey: encodedPublicKey,
+        enrolledAt: DateTime.now().toUtc(),
+        trusted: true,
+      ),
+    ]);
+    final crypto = _CapturingCryptoService();
+    final api = _CapturingAuthApiClient();
+    final service = RegisteredDeviceLoginService(
+      crypto: crypto,
+      trustedSystems: store,
+      api: api,
+    );
+    final requestedAt = DateTime.fromMillisecondsSinceEpoch(
+      (DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) * 1000,
+      isUtc: true,
+    );
+    final expiresAt = requestedAt.add(const Duration(minutes: 5));
+    final values = <String, String>{
+      'v': '3',
+      'server_id': 'server-v3',
+      'server_name': 'Pr0jectZer0 Production',
+      'organization': 'The Bostrom Group, LLC',
+      'server_url': 'https://security.example.test',
+      'challenge_id': 'login-v3',
+      'nonce': 'nonce-v3',
+      'requested_at': requestedAt.toIso8601String(),
+      'expires_at': expiresAt.toIso8601String(),
+      'browser_name': 'Microsoft Edge',
+      'operating_system': 'Windows',
+      'network_address': '198.51.100.18',
+      'verification_code': '123456',
+    };
+    final serverPayload = <String>[
+      'pr0jectzer0-login-challenge-v3',
+      '3',
+      'server-v3',
+      'Pr0jectZer0 Production',
+      'The Bostrom Group, LLC',
+      'https://security.example.test',
+      'login-v3',
+      'nonce-v3',
+      (requestedAt.millisecondsSinceEpoch ~/ 1000).toString(),
+      (expiresAt.millisecondsSinceEpoch ~/ 1000).toString(),
+      'Microsoft Edge',
+      'Windows',
+      '198.51.100.18',
+      '123456',
+    ].join('\n');
+    final serverSignature = await algorithm.sign(
+      utf8.encode(serverPayload),
+      keyPair: keyPair,
+    );
+    values['signature'] = base64Url
+        .encode(serverSignature.bytes)
+        .replaceAll('=', '');
+    final payload = Uri(
+      scheme: 'pr0jectzer0',
+      host: 'login',
+      queryParameters: values,
+    ).toString();
+
+    final challenge = await service.parseChallenge(payload);
+    expect(challenge.verificationCode, '123456');
+    expect(challenge.browserName, 'Microsoft Edge');
+    expect(challenge.networkAddress, '198.51.100.18');
+    await service.approve(challenge);
+
+    expect(
+      utf8.decode(crypto.lastSignedPayload!),
+      'pr0jectzer0-login-v3\nserver-v3\nPr0jectZer0 Production\n'
+      'The Bostrom Group, LLC\nhttps://security.example.test\n'
+      'login-v3\nnonce-v3\n'
+      '${requestedAt.millisecondsSinceEpoch ~/ 1000}\n'
+      '${expiresAt.millisecondsSinceEpoch ~/ 1000}\n'
+      'Microsoft Edge\nWindows\n198.51.100.18\n123456',
+    );
+
+    final tamperedValues = Map<String, String>.from(values)
+      ..['browser_name'] = 'Google Chrome';
+    final tamperedPayload = Uri(
+      scheme: 'pr0jectzer0',
+      host: 'login',
+      queryParameters: tamperedValues,
+    ).toString();
+    await expectLater(
+      service.parseChallenge(tamperedPayload),
+      throwsA(isA<Exception>()),
+    );
+    await storage.dispose();
+  });
 }
 
 class _CapturingCryptoService implements CryptoService {
