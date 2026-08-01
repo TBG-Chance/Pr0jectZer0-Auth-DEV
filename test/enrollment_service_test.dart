@@ -131,6 +131,90 @@ void main() {
     expect(invitation.productType, 'pz_auth');
   });
 
+  test('verifies a signed version 3 invitation with a scoped local CA', () async {
+    final algorithm = Ed25519();
+    final keyPair = await algorithm.newKeyPair();
+    final publicKey = await keyPair.extractPublicKey();
+    final encodedPublicKey = base64Url
+        .encode(publicKey.bytes)
+        .replaceAll('=', '');
+    final identityDigest = await Sha256().hash(publicKey.bytes);
+    final identityFingerprint =
+        'sha256:${identityDigest.bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join()}';
+    final certificateBytes = utf8.encode('test-installation-ca-der');
+    final encodedCertificate = base64Url
+        .encode(certificateBytes)
+        .replaceAll('=', '');
+    final certificateDigest = await Sha256().hash(certificateBytes);
+    final certificateFingerprint =
+        'sha256:${certificateDigest.bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join()}';
+    final issuedAt = DateTime.fromMillisecondsSinceEpoch(
+      (DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000) * 1000,
+      isUtc: true,
+    );
+    final expiresAt = issuedAt.add(const Duration(minutes: 5));
+    final fields = <String>[
+      'pr0jectzer0-enrollment-v3',
+      '3',
+      'server-local',
+      'Pr0jectZer0 Local',
+      'https://192.168.1.20:8443',
+      'The Bostrom Group, LLC',
+      'pz_auth',
+      'enroll-v3',
+      'single-use-secret',
+      (issuedAt.millisecondsSinceEpoch ~/ 1000).toString(),
+      (expiresAt.millisecondsSinceEpoch ~/ 1000).toString(),
+      encodedPublicKey,
+      identityFingerprint,
+      encodedCertificate,
+      certificateFingerprint,
+    ];
+    final signature = await algorithm.sign(
+      utf8.encode(fields.join('\n')),
+      keyPair: keyPair,
+    );
+    final payload = Uri(
+      scheme: 'pr0jectzer0',
+      host: 'enroll',
+      queryParameters: <String, String>{
+        'v': '3',
+        'server_id': 'server-local',
+        'server_name': 'Pr0jectZer0 Local',
+        'server_url': 'https://192.168.1.20:8443',
+        'organization': 'The Bostrom Group, LLC',
+        'device_type': 'pz_auth',
+        'challenge_id': 'enroll-v3',
+        'secret': 'single-use-secret',
+        'issued_at': issuedAt.toIso8601String(),
+        'expires_at': expiresAt.toIso8601String(),
+        'server_public_key': encodedPublicKey,
+        'server_fingerprint': identityFingerprint,
+        'tls_ca': encodedCertificate,
+        'tls_ca_fingerprint': certificateFingerprint,
+        'signature': base64Url.encode(signature.bytes).replaceAll('=', ''),
+      },
+    ).toString();
+
+    final invitation = await const EnrollmentPayloadParser().parse(payload);
+
+    expect(invitation.version, 3);
+    expect(invitation.tlsCaCertificate, encodedCertificate);
+    expect(invitation.tlsCaFingerprint, certificateFingerprint);
+
+    final request = await enrollment.prepareEnrollment(
+      invitation: invitation,
+      deviceName: 'Test Phone',
+      platform: 'android',
+    );
+    await enrollment.submitEnrollment(invitation: invitation, request: request);
+    expect(api.lastTrustedCaCertificate, encodedCertificate);
+    expect(
+      enrollment.snapshot.trustedSystems.single.tlsCaFingerprint,
+      certificateFingerprint,
+    );
+  });
+
   test('verifies a signed administrator activation code', () async {
     final algorithm = Ed25519();
     final keyPair = await algorithm.newKeyPair();
@@ -335,13 +419,16 @@ void main() {
 
 class _FakeAuthApiClient implements AuthApiClient {
   Map<String, Object>? lastEnrollment;
+  String? lastTrustedCaCertificate;
 
   @override
   Future<EnrolledDevice> completeEnrollment({
     required Uri serverBaseUrl,
     required Map<String, Object> payload,
+    String? trustedCaCertificate,
   }) async {
     lastEnrollment = payload;
+    lastTrustedCaCertificate = trustedCaCertificate;
     return EnrolledDevice(
       id: 'authdev-server-assigned',
       administratorId: 'admin-1',
@@ -357,6 +444,7 @@ class _FakeAuthApiClient implements AuthApiClient {
     required String nonce,
     required String deviceId,
     required String signature,
+    String? trustedCaCertificate,
   }) async {}
 }
 

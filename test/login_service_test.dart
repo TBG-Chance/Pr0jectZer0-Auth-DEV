@@ -307,6 +307,7 @@ class _CapturingAuthApiClient implements AuthApiClient {
     required String nonce,
     required String deviceId,
     required String signature,
+    String? trustedCaCertificate,
   }) async {
     this.deviceId = deviceId;
     this.signature = signature;
@@ -316,5 +317,6 @@ class _CapturingAuthApiClient implements AuthApiClient {
   Future<EnrolledDevice> completeEnrollment({
     required Uri serverBaseUrl,
     required Map<String, Object> payload,
+    String? trustedCaCertificate,
   }) => throw UnimplementedError();
 }

@@ -82,9 +82,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
 The script analyzes, tests, signs, and places the release bundle and checksum in
 `release\android`.
 
-## Beta network limitation
+## Beta network requirement
 
-The closed beta explicitly permits cleartext HTTP so the authenticator can
-reach a Windows server by private-LAN IP address. Test only on a trusted private
-network. Public Wi-Fi, port forwarding, and internet exposure are out of scope.
-Certificate-pinned HTTPS must replace this allowance before production.
+Release builds reject cleartext HTTP. The phone must reach the enrolled
+Pr0jectZer0 server over HTTPS, and the tester must verify the installation
+server fingerprint shown during enrollment. Public Wi-Fi, direct port
+forwarding, and internet exposure without the approved HTTPS and firewall
+deployment remain outside the beta boundary.
+
+Builds are released only for the Android versions and physical-device
+conditions in `docs/ANDROID_SUPPORT_MATRIX.md`.

@@ -42,6 +42,8 @@ class EnrollmentInvitation {
     this.serverPublicKey,
     this.serverFingerprint,
     this.serverSignature,
+    this.tlsCaCertificate,
+    this.tlsCaFingerprint,
     this.purpose = EnrollmentPurpose.deviceEnrollment,
     this.administratorId,
     this.administratorFirstName,
@@ -63,6 +65,8 @@ class EnrollmentInvitation {
   final String? serverPublicKey;
   final String? serverFingerprint;
   final String? serverSignature;
+  final String? tlsCaCertificate;
+  final String? tlsCaFingerprint;
   final EnrollmentPurpose purpose;
   final String? administratorId;
   final String? administratorFirstName;
@@ -89,6 +93,8 @@ class EnrollmentInvitation {
       serverPublicKey: json['serverPublicKey'] as String?,
       serverFingerprint: json['serverFingerprint'] as String?,
       serverSignature: json['serverSignature'] as String?,
+      tlsCaCertificate: json['tlsCaCertificate'] as String?,
+      tlsCaFingerprint: json['tlsCaFingerprint'] as String?,
       purpose: EnrollmentPurpose.fromWireValue(json['purpose'] as String?),
       administratorId: json['administratorId'] as String?,
       administratorFirstName: json['administratorFirstName'] as String?,
@@ -112,6 +118,8 @@ class EnrollmentInvitation {
     if (serverPublicKey != null) 'serverPublicKey': serverPublicKey,
     if (serverFingerprint != null) 'serverFingerprint': serverFingerprint,
     if (serverSignature != null) 'serverSignature': serverSignature,
+    if (tlsCaCertificate != null) 'tlsCaCertificate': tlsCaCertificate,
+    if (tlsCaFingerprint != null) 'tlsCaFingerprint': tlsCaFingerprint,
     'purpose': purpose.wireValue,
     if (administratorId != null) 'administratorId': administratorId,
     if (administratorFirstName != null)

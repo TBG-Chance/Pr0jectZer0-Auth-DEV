@@ -7,7 +7,7 @@ import 'enrollment_models.dart';
 class EnrollmentPayloadParser {
   const EnrollmentPayloadParser({this.allowLegacyInsecure = false});
 
-  static const supportedVersion = 2;
+  static const supportedVersion = 3;
   final bool allowLegacyInsecure;
 
   Future<EnrollmentInvitation> parse(String payload) async {
@@ -24,6 +24,7 @@ class EnrollmentPayloadParser {
         if (!allowLegacyInsecure || invitation.version != 1) {
           await _verifySignature(invitation);
         }
+        if (invitation.version == 3) await _verifyTlsCA(invitation);
         return invitation;
       }
       if (uri != null &&
@@ -34,6 +35,7 @@ class EnrollmentPayloadParser {
         if (!allowLegacyInsecure) {
           await _verifyActivationSignature(invitation);
         }
+        if (invitation.version == 2) await _verifyTlsCA(invitation);
         return invitation;
       }
       if (uri != null && uri.scheme == 'pr0jectzer0' && uri.host == 'login') {
@@ -52,6 +54,7 @@ class EnrollmentPayloadParser {
       if (!allowLegacyInsecure || invitation.version != 1) {
         await _verifySignature(invitation);
       }
+      if (invitation.version == 3) await _verifyTlsCA(invitation);
       return invitation;
     } on EnrollmentException {
       rethrow;
@@ -91,6 +94,8 @@ class EnrollmentPayloadParser {
       serverPublicKey: values['server_public_key']?.trim(),
       serverFingerprint: values['server_fingerprint']?.trim(),
       serverSignature: values['signature']?.trim(),
+      tlsCaCertificate: values['tls_ca']?.trim(),
+      tlsCaFingerprint: values['tls_ca_fingerprint']?.trim(),
     );
   }
 
@@ -126,6 +131,8 @@ class EnrollmentPayloadParser {
       serverPublicKey: values['server_public_key']?.trim(),
       serverFingerprint: values['server_fingerprint']?.trim(),
       serverSignature: values['signature']?.trim(),
+      tlsCaCertificate: values['tls_ca']?.trim(),
+      tlsCaFingerprint: values['tls_ca_fingerprint']?.trim(),
       purpose: purpose,
       administratorId: requiredValue('administrator_id'),
       administratorFirstName: requiredValue('first_name'),
@@ -138,6 +145,7 @@ class EnrollmentPayloadParser {
   void _validate(EnrollmentInvitation invitation) {
     final supported =
         invitation.version == supportedVersion ||
+        invitation.version == 2 ||
         (allowLegacyInsecure && invitation.version == 1);
     if (!supported) {
       throw EnrollmentException(
@@ -158,7 +166,7 @@ class EnrollmentPayloadParser {
         throw EnrollmentException('${entry.key} cannot be empty.');
       }
     }
-    if (invitation.version == 2 && invitation.productType != 'pz_auth') {
+    if (invitation.version >= 2 && invitation.productType != 'pz_auth') {
       throw const EnrollmentException(
         'This invitation is not intended for Pr0jectZer0 Auth.',
       );
@@ -187,7 +195,14 @@ class EnrollmentPayloadParser {
     if (invitation.isExpired) {
       throw const EnrollmentException('Enrollment invitation has expired.');
     }
-    final maximumLifetime = invitation.version == 2
+    if (invitation.version == 3 &&
+        ((invitation.tlsCaCertificate?.trim().isEmpty ?? true) ||
+            (invitation.tlsCaFingerprint?.trim().isEmpty ?? true))) {
+      throw const EnrollmentException(
+        'Local HTTPS enrollment is missing its installation trust anchor.',
+      );
+    }
+    final maximumLifetime = invitation.version >= 2
         ? const Duration(minutes: 10)
         : const Duration(hours: 24);
     if (invitation.expiresAt.difference(invitation.issuedAt) >
@@ -199,13 +214,22 @@ class EnrollmentPayloadParser {
   }
 
   void _validateActivation(EnrollmentInvitation invitation) {
-    if (invitation.version != 1 ||
+    final supportedActivation =
+        invitation.version == 1 || invitation.version == 2;
+    if (!supportedActivation ||
         invitation.purpose == EnrollmentPurpose.deviceEnrollment) {
       throw const EnrollmentException('Unsupported activation payload.');
     }
     if (invitation.productType != 'pz_auth') {
       throw const EnrollmentException(
         'This activation is not intended for Pr0jectZer0 Auth.',
+      );
+    }
+    if (invitation.version == 2 &&
+        ((invitation.tlsCaCertificate?.trim().isEmpty ?? true) ||
+            (invitation.tlsCaFingerprint?.trim().isEmpty ?? true))) {
+      throw const EnrollmentException(
+        'Local HTTPS activation is missing its installation trust anchor.',
       );
     }
     final origin = invitation.serverBaseUrl;
@@ -286,7 +310,9 @@ class EnrollmentPayloadParser {
       );
     }
     final fields = <String>[
-      'pr0jectzer0-enrollment-v2',
+      invitation.version == 3
+          ? 'pr0jectzer0-enrollment-v3'
+          : 'pr0jectzer0-enrollment-v2',
       invitation.version.toString(),
       invitation.systemId,
       invitation.displayName,
@@ -300,6 +326,12 @@ class EnrollmentPayloadParser {
       encodedPublicKey,
       fingerprint,
     ];
+    if (invitation.version == 3) {
+      fields.addAll(<String>[
+        invitation.tlsCaCertificate!.trim(),
+        invitation.tlsCaFingerprint!.trim().toLowerCase(),
+      ]);
+    }
     final signature = Signature(
       signatureBytes,
       publicKey: SimplePublicKey(publicKeyBytes, type: KeyPairType.ed25519),
@@ -351,7 +383,9 @@ class EnrollmentPayloadParser {
       );
     }
     final fields = <String>[
-      'pr0jectzer0-administrator-activation-v1',
+      invitation.version == 2
+          ? 'pr0jectzer0-administrator-activation-v2'
+          : 'pr0jectzer0-administrator-activation-v1',
       invitation.version.toString(),
       invitation.purpose.wireValue,
       invitation.systemId,
@@ -371,6 +405,12 @@ class EnrollmentPayloadParser {
       encodedPublicKey,
       fingerprint,
     ];
+    if (invitation.version == 2) {
+      fields.addAll(<String>[
+        invitation.tlsCaCertificate!.trim(),
+        invitation.tlsCaFingerprint!.trim().toLowerCase(),
+      ]);
+    }
     final valid = await Ed25519().verify(
       utf8.encode(fields.join('\n')),
       signature: Signature(
@@ -399,5 +439,36 @@ class EnrollmentPayloadParser {
     return a == 10 ||
         (a == 172 && b >= 16 && b <= 31) ||
         (a == 192 && b == 168);
+  }
+
+  Future<void> _verifyTlsCA(EnrollmentInvitation invitation) async {
+    final encoded = invitation.tlsCaCertificate?.trim() ?? '';
+    final expected = invitation.tlsCaFingerprint?.trim().toLowerCase() ?? '';
+    if (!RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(expected)) {
+      throw const EnrollmentException(
+        'Installation HTTPS trust anchor fingerprint is invalid.',
+      );
+    }
+    late List<int> certificate;
+    try {
+      certificate = base64Url.decode(base64Url.normalize(encoded));
+    } on FormatException {
+      throw const EnrollmentException(
+        'Installation HTTPS trust anchor encoding is invalid.',
+      );
+    }
+    if (certificate.isEmpty || certificate.length > 16 * 1024) {
+      throw const EnrollmentException(
+        'Installation HTTPS trust anchor size is invalid.',
+      );
+    }
+    final digest = await Sha256().hash(certificate);
+    final actual =
+        'sha256:${digest.bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join()}';
+    if (actual != expected) {
+      throw const EnrollmentException(
+        'Installation HTTPS trust anchor fingerprint does not match.',
+      );
+    }
   }
 }

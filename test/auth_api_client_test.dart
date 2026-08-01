@@ -85,4 +85,35 @@ void main() {
       expect(device.administratorId, 'admin-2');
     });
   }
+
+  test('uses the enrolled installation CA only for that request', () async {
+    const trustedCA = 'base64url-installation-ca';
+    String? selectedCA;
+    late http.Request captured;
+    final client = HttpAuthApiClient(
+      client: MockClient(
+        (_) async => throw StateError('the system trust client was used'),
+      ),
+      scopedClientFactory: (certificate) {
+        selectedCA = certificate;
+        return MockClient((request) async {
+          captured = request;
+          return http.Response('{}', 200);
+        });
+      },
+    );
+
+    await client.approveLogin(
+      serverBaseUrl: Uri.parse('https://192.168.1.20:8443'),
+      challengeId: 'login-1',
+      nonce: 'nonce-1',
+      deviceId: 'device-1',
+      signature: 'signature-1',
+      trustedCaCertificate: trustedCA,
+    );
+
+    expect(selectedCA, trustedCA);
+    expect(captured.url.host, '192.168.1.20');
+    expect(captured.url.port, 8443);
+  });
 }

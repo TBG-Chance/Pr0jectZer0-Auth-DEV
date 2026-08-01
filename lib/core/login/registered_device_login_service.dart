@@ -266,6 +266,7 @@ class RegisteredDeviceLoginService implements LoginService {
       nonce: challenge.nonce,
       deviceId: challenge.trustedSystem.id,
       signature: signature.signatureBase64Url,
+      trustedCaCertificate: challenge.trustedSystem.tlsCaCertificate,
     );
   }
 }

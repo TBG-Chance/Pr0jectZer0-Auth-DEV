@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
+
+typedef ScopedClientFactory = http.Client Function(String certificateBase64Url);
 
 class EnrolledDevice {
   const EnrolledDevice({
@@ -30,6 +34,7 @@ abstract interface class AuthApiClient {
   Future<EnrolledDevice> completeEnrollment({
     required Uri serverBaseUrl,
     required Map<String, Object> payload,
+    String? trustedCaCertificate,
   });
 
   Future<void> approveLogin({
@@ -38,22 +43,27 @@ abstract interface class AuthApiClient {
     required String nonce,
     required String deviceId,
     required String signature,
+    String? trustedCaCertificate,
   });
 }
 
 class HttpAuthApiClient implements AuthApiClient {
   HttpAuthApiClient({
     http.Client? client,
+    ScopedClientFactory? scopedClientFactory,
     this.timeout = const Duration(seconds: 15),
-  }) : _client = client ?? http.Client();
+  }) : _client = client ?? http.Client(),
+       _scopedClientFactory = scopedClientFactory ?? _newScopedClient;
 
   final http.Client _client;
+  final ScopedClientFactory _scopedClientFactory;
   final Duration timeout;
 
   @override
   Future<EnrolledDevice> completeEnrollment({
     required Uri serverBaseUrl,
     required Map<String, Object> payload,
+    String? trustedCaCertificate,
   }) async {
     final requestPayload = Map<String, Object>.from(payload);
     final activationKind = requestPayload.remove('_activation_kind');
@@ -63,7 +73,12 @@ class HttpAuthApiClient implements AuthApiClient {
       'lost_device_recovery' => '/api/v1/auth/recovery/activate',
       _ => '/api/v1/auth/enrollment/complete',
     };
-    final response = await _post(serverBaseUrl, endpointPath, requestPayload);
+    final response = await _post(
+      serverBaseUrl,
+      endpointPath,
+      requestPayload,
+      trustedCaCertificate: trustedCaCertificate,
+    );
     final device = response['device'];
     if (device is! Map) {
       throw const AuthApiException(
@@ -80,24 +95,35 @@ class HttpAuthApiClient implements AuthApiClient {
     required String nonce,
     required String deviceId,
     required String signature,
+    String? trustedCaCertificate,
   }) async {
-    await _post(serverBaseUrl, '/api/v1/auth/login/approve', <String, Object>{
-      'challenge_id': challengeId,
-      'nonce': nonce,
-      'device_id': deviceId,
-      'signature': signature,
-    });
+    await _post(
+      serverBaseUrl,
+      '/api/v1/auth/login/approve',
+      <String, Object>{
+        'challenge_id': challengeId,
+        'nonce': nonce,
+        'device_id': deviceId,
+        'signature': signature,
+      },
+      trustedCaCertificate: trustedCaCertificate,
+    );
   }
 
   Future<Map<String, dynamic>> _post(
     Uri serverBaseUrl,
     String path,
-    Map<String, Object> payload,
-  ) async {
+    Map<String, Object> payload, {
+    String? trustedCaCertificate,
+  }) async {
     final endpoint = _endpoint(serverBaseUrl, path);
     late http.Response response;
+    final scopedCA = trustedCaCertificate?.trim() ?? '';
+    final requestClient = scopedCA.isEmpty
+        ? _client
+        : _scopedClientFactory(scopedCA);
     try {
-      response = await _client
+      response = await requestClient
           .post(
             endpoint,
             headers: const <String, String>{
@@ -113,6 +139,8 @@ class HttpAuthApiClient implements AuthApiClient {
       );
     } on Object catch (error) {
       throw AuthApiException('Unable to reach ${endpoint.host}: $error');
+    } finally {
+      if (!identical(requestClient, _client)) requestClient.close();
     }
 
     Map<String, dynamic> decoded = const <String, dynamic>{};
@@ -147,6 +175,34 @@ class HttpAuthApiClient implements AuthApiClient {
         .toString();
     return Uri.parse('${normalized.replaceFirst(RegExp(r'/$'), '')}$path');
   }
+}
+
+http.Client _newScopedClient(String certificateBase64Url) {
+  late List<int> certificateDER;
+  try {
+    certificateDER = base64Url.decode(
+      base64Url.normalize(certificateBase64Url),
+    );
+  } on FormatException {
+    throw const AuthApiException(
+      'The enrolled installation HTTPS trust anchor is invalid.',
+    );
+  }
+  if (certificateDER.isEmpty || certificateDER.length > 16 * 1024) {
+    throw const AuthApiException(
+      'The enrolled installation HTTPS trust anchor is invalid.',
+    );
+  }
+  final encoded = base64.encode(certificateDER);
+  final pem = StringBuffer('-----BEGIN CERTIFICATE-----\n');
+  for (var offset = 0; offset < encoded.length; offset += 64) {
+    final end = (offset + 64 < encoded.length) ? offset + 64 : encoded.length;
+    pem.writeln(encoded.substring(offset, end));
+  }
+  pem.write('-----END CERTIFICATE-----\n');
+  final context = SecurityContext(withTrustedRoots: false)
+    ..setTrustedCertificatesBytes(utf8.encode(pem.toString()));
+  return IOClient(HttpClient(context: context));
 }
 
 class AuthApiException implements Exception {

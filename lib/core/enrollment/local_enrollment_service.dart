@@ -71,6 +71,7 @@ class LocalEnrollmentService implements EnrollmentService {
     try {
       final device = await _api.completeEnrollment(
         serverBaseUrl: invitation.serverBaseUrl,
+        trustedCaCertificate: invitation.tlsCaCertificate,
         payload: request.toApiJson(invitation, activationPin: activationPin),
       );
       await completeEnrollment(
@@ -202,6 +203,8 @@ class LocalEnrollmentService implements EnrollmentService {
       publicKey: confirmation.serverPublicKey,
       fingerprint: invitation.serverFingerprint ?? '',
       administratorId: invitation.administratorId ?? '',
+      tlsCaCertificate: invitation.tlsCaCertificate ?? '',
+      tlsCaFingerprint: invitation.tlsCaFingerprint ?? '',
       enrolledAt: confirmation.confirmedAt,
       trusted: true,
     );

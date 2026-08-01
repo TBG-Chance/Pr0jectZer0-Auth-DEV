@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <!-- Closed-beta LAN compatibility only. Replace with pinned HTTPS before production. -->
+    <!-- Release traffic is HTTPS-only; local installation trust is scoped in the app. -->
     <application
         android:label="Pr0jectZer0 Auth"
         android:allowBackup="false"

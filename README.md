@@ -26,4 +26,5 @@ constant time.
 
 Android auto-backup is disabled because KeyStore keys are device-bound and
 restoring encrypted preferences to another device can make them unreadable.
-The Android minimum SDK is 23, matching the secure-storage dependency.
+The open-beta minimum is Android 14 (API 34), and release builds target Android
+16 (API 36). See `docs/ANDROID_SUPPORT_MATRIX.md` for the tested device policy.

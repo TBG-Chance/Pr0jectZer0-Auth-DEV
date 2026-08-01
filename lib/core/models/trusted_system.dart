@@ -9,6 +9,8 @@ class TrustedSystem {
     required this.publicKey,
     this.fingerprint = '',
     this.administratorId = '',
+    this.tlsCaCertificate = '',
+    this.tlsCaFingerprint = '',
     required this.enrolledAt,
     required this.trusted,
   });
@@ -22,6 +24,8 @@ class TrustedSystem {
   final String publicKey;
   final String fingerprint;
   final String administratorId;
+  final String tlsCaCertificate;
+  final String tlsCaFingerprint;
   final DateTime enrolledAt;
   final bool trusted;
 
@@ -36,6 +40,8 @@ class TrustedSystem {
       publicKey: json['publicKey'] as String,
       fingerprint: json['fingerprint'] as String? ?? '',
       administratorId: json['administratorId'] as String? ?? '',
+      tlsCaCertificate: json['tlsCaCertificate'] as String? ?? '',
+      tlsCaFingerprint: json['tlsCaFingerprint'] as String? ?? '',
       enrolledAt: DateTime.parse(json['enrolledAt'] as String).toUtc(),
       trusted: json['trusted'] as bool,
     );
@@ -51,6 +57,8 @@ class TrustedSystem {
     'publicKey': publicKey,
     'fingerprint': fingerprint,
     'administratorId': administratorId,
+    'tlsCaCertificate': tlsCaCertificate,
+    'tlsCaFingerprint': tlsCaFingerprint,
     'enrolledAt': enrolledAt.toUtc().toIso8601String(),
     'trusted': trusted,
   };
