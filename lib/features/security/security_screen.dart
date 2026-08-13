@@ -32,15 +32,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
     final report = _report;
     return AppPage(
       title: 'Security Status',
-      actions: [IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh), tooltip: 'Refresh')],
+      actions: [
+        IconButton(
+          onPressed: _refresh,
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Refresh',
+        ),
+      ],
       child: report == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              children: report.checks.map((check) => SecurityItem(
-                check.name,
-                check.status,
-                detail: check.detail,
-              )).toList(),
+              children: report.checks
+                  .map(
+                    (check) => SecurityItem(
+                      check.name,
+                      check.status,
+                      detail: check.detail,
+                    ),
+                  )
+                  .toList(),
             ),
     );
   }

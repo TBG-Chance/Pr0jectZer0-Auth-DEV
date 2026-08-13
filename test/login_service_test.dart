@@ -249,6 +249,17 @@ void main() {
       service.parseChallenge(tamperedPayload),
       throwsA(isA<Exception>()),
     );
+
+    final unsupportedPayload = Uri.parse(payload).replace(
+      queryParameters: <String, String>{
+        ...Uri.parse(payload).queryParameters,
+        'unexpected': 'value',
+      },
+    );
+    await expectLater(
+      service.parseChallenge(unsupportedPayload.toString()),
+      throwsA(isA<Exception>()),
+    );
     await storage.dispose();
   });
 }

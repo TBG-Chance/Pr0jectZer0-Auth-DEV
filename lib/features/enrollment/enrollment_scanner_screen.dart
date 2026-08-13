@@ -48,7 +48,7 @@ class _EnrollmentScannerScreenState extends State<EnrollmentScannerScreen>
   }
 
   Future<void> _processPayload(String payload) async {
-	final enrollment = AppServices.of(context).enrollment;
+    final enrollment = AppServices.of(context).enrollment;
     setState(() {
       _processing = true;
       _captured = false;

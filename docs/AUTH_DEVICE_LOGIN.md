@@ -1,47 +1,38 @@
-# Platform enrollment and dashboard approval
+# Device enrollment and dashboard approval
 
-Pr0jectZer0 Auth implements version 1 of the private platform's
-registered-device login protocol.
+Pr0jectZer0 Auth implements the signed registered-device protocol shared with the Pr0jectZer0 server.
 
-## User flow
+## Enrollment
 
-- Enroll the phone once by scanning the platform's enrollment QR code.
-- On a dashboard login, open **Approvals**, scan the displayed login QR code,
-  and verify the trusted server details.
-- Confirm with biometrics. If biometrics are unavailable or cancelled, enter
-  the app-local PIN.
-- The app signs the one-time challenge with its device-bound Ed25519 key and
-  submits the approval to the enrolled server.
-
-Biometric data, the app PIN, and the private key remain on the phone. A
-successful phone approval is sufficient for the originating browser; the
-browser does not request a second PIN.
-
-## Shared version 1 contract
-
-Enrollment QR codes use
-`pr0jectzer0://enroll?v=1&server_id=...&server_name=...&server_url=...&organization=...&challenge_id=...&secret=...&issued_at=...&expires_at=...`.
-
-Login QR codes use
-`pr0jectzer0://login?v=1&server_id=...&challenge_id=...&nonce=...&expires_at=...`.
-
-For login approval, the app signs these exact UTF-8 bytes, with no final
-newline:
+Current enrollment QR codes use `pr0jectzer0://enroll` version 3. They carry the canonical HTTPS `server_url`, server Ed25519 identity, short-lived enrollment secret, and installation CA. The app verifies the server signature, identity fingerprint, CA fingerprint, device type, origin, and timestamps before sending the device public key to:
 
 ```text
-pr0jectzer0-login-v1
-<challenge_id>
-<nonce>
-<expires_at as Unix seconds>
+POST /api/v1/auth/enrollment/complete
 ```
 
-The signature, nonce, one-time challenge ID, and platform-assigned device ID
-are sent to `POST /api/v1/auth/login/approve` on the URL saved during
-enrollment.
+Version 2 signed enrollment remains supported for servers with a publicly trusted TLS certificate. Unsigned version 1 payloads are available only when the application is explicitly constructed in legacy-development mode.
 
-## Development networking
+Administrator invitation and lost-device recovery use signed `pr0jectzer0://activate` payloads and their dedicated activation endpoints.
 
-A real phone must be able to reach the platform URL embedded in the enrollment
-QR code. Configure the platform's `PROJECTZERO_PUBLIC_URL` to a reachable
-private-network URL or HTTPS hostname. Android permits cleartext private-network
-testing only in debug builds. Production traffic should use HTTPS.
+## Dashboard login
+
+Current dashboard QR codes use `pr0jectzer0://login` version 3. The signed payload includes the enrolled server identity and origin, one-time challenge and nonce, request and expiry timestamps, browser, operating system, network address, and six-digit comparison code.
+
+The user must compare the code shown on the phone with the browser and authenticate with biometrics or the app PIN. The app signs the canonical version 3 challenge and submits only this body to:
+
+```text
+POST /api/v1/auth/login/approve
+
+{
+  "challenge_id": "...",
+  "nonce": "...",
+  "device_id": "...",
+  "signature": "..."
+}
+```
+
+Selecting **Deny** is a local dismissal. The browser polls the server and the unused challenge expires.
+
+## Network boundary
+
+Production Pr0jectZer0 defaults to HTTPS port `8443`, but the signed `server_url` is authoritative and its explicit port is preserved. PZ Auth does not discover or replace ports. Cleartext port `8080` is limited to explicitly enabled legacy development and must not be used for beta distribution.

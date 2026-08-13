@@ -1,7 +1,11 @@
 enum SecurityCheckStatus { passed, failed, unavailable, unknown }
 
 class SecurityCheck {
-  const SecurityCheck({required this.name, required this.status, required this.detail});
+  const SecurityCheck({
+    required this.name,
+    required this.status,
+    required this.detail,
+  });
   final String name;
   final SecurityCheckStatus status;
   final String detail;
@@ -28,10 +32,16 @@ class DeviceSecurityReport {
   final List<SecurityCheck> checks;
 
   bool get requirementsMet => checks
-      .where((check) => check.name == 'Screen lock' || check.name == 'Secure storage' || check.name == 'Device integrity')
+      .where(
+        (check) =>
+            check.name == 'Screen lock' ||
+            check.name == 'Secure storage' ||
+            check.name == 'Device integrity',
+      )
       .every((check) => check.status == SecurityCheckStatus.passed);
 
-  SecurityCheck check(String name) => checks.firstWhere((item) => item.name == name);
+  SecurityCheck check(String name) =>
+      checks.firstWhere((item) => item.name == name);
 
   String toSupportReport() {
     final buffer = StringBuffer()

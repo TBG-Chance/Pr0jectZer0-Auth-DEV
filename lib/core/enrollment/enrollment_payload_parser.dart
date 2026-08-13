@@ -8,17 +8,46 @@ class EnrollmentPayloadParser {
   const EnrollmentPayloadParser({this.allowLegacyInsecure = false});
 
   static const supportedVersion = 3;
+  static const _enrollmentParameters = <String>{
+    'v',
+    'server_id',
+    'server_name',
+    'server_url',
+    'organization',
+    'device_type',
+    'challenge_id',
+    'secret',
+    'issued_at',
+    'expires_at',
+    'server_public_key',
+    'server_fingerprint',
+    'tls_ca',
+    'tls_ca_fingerprint',
+    'signature',
+  };
+  static const _activationParameters = <String>{
+    ..._enrollmentParameters,
+    'purpose',
+    'administrator_id',
+    'first_name',
+    'last_name',
+    'position',
+    'role',
+  };
   final bool allowLegacyInsecure;
 
   Future<EnrollmentInvitation> parse(String payload) async {
     final normalized = payload.trim();
-    if (normalized.isEmpty) {
-      throw const EnrollmentException('Enrollment payload is empty.');
+    if (normalized.isEmpty || normalized.length > 32768) {
+      throw const EnrollmentException(
+        'Enrollment payload is empty or too large.',
+      );
     }
 
     try {
       final uri = Uri.tryParse(normalized);
       if (uri != null && uri.scheme == 'pr0jectzer0' && uri.host == 'enroll') {
+        _validateUri(uri, _enrollmentParameters, 'Enrollment');
         final invitation = _fromEnrollmentUri(uri);
         _validate(invitation);
         if (!allowLegacyInsecure || invitation.version != 1) {
@@ -30,6 +59,7 @@ class EnrollmentPayloadParser {
       if (uri != null &&
           uri.scheme == 'pr0jectzer0' &&
           uri.host == 'activate') {
+        _validateUri(uri, _activationParameters, 'Activation');
         final invitation = _fromActivationUri(uri);
         _validateActivation(invitation);
         if (!allowLegacyInsecure) {
@@ -62,6 +92,19 @@ class EnrollmentPayloadParser {
       throw EnrollmentException('Enrollment payload is malformed: $error');
     } on TypeError catch (error) {
       throw EnrollmentException('Enrollment payload is incomplete: $error');
+    }
+  }
+
+  void _validateUri(Uri uri, Set<String> allowedParameters, String label) {
+    if (uri.path.isNotEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasPort ||
+        uri.hasFragment ||
+        uri.queryParametersAll.values.any((values) => values.length != 1) ||
+        uri.queryParameters.keys.any(
+          (parameter) => !allowedParameters.contains(parameter),
+        )) {
+      throw EnrollmentException('$label code contains unsupported fields.');
     }
   }
 
@@ -162,8 +205,8 @@ class EnrollmentPayloadParser {
       'nonce': invitation.nonce,
     };
     for (final entry in requiredValues.entries) {
-      if (entry.value.trim().isEmpty) {
-        throw EnrollmentException('${entry.key} cannot be empty.');
+      if (entry.value.trim().isEmpty || entry.value.length > 512) {
+        throw EnrollmentException('${entry.key} is invalid.');
       }
     }
     if (invitation.version >= 2 && invitation.productType != 'pz_auth') {
@@ -187,10 +230,10 @@ class EnrollmentPayloadParser {
         'Open-beta enrollment requires an HTTPS server.',
       );
     }
-    if (!invitation.expiresAt.isAfter(invitation.issuedAt)) {
-      throw const EnrollmentException(
-        'Enrollment expiration must be after its issue time.',
-      );
+    final now = DateTime.now().toUtc();
+    if (!invitation.expiresAt.isAfter(invitation.issuedAt) ||
+        invitation.issuedAt.isAfter(now.add(const Duration(minutes: 2)))) {
+      throw const EnrollmentException('Enrollment timestamps are invalid.');
     }
     if (invitation.isExpired) {
       throw const EnrollmentException('Enrollment invitation has expired.');
@@ -266,7 +309,9 @@ class EnrollmentPayloadParser {
     if (!roles.contains(invitation.administratorRole)) {
       throw const EnrollmentException('Administrator role is invalid.');
     }
+    final now = DateTime.now().toUtc();
     if (!invitation.expiresAt.isAfter(invitation.issuedAt) ||
+        invitation.issuedAt.isAfter(now.add(const Duration(minutes: 2))) ||
         invitation.isExpired ||
         invitation.expiresAt.difference(invitation.issuedAt) >
             const Duration(minutes: 10)) {

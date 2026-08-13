@@ -30,7 +30,8 @@ class _ServersScreenState extends State<ServersScreen> {
       stream: enrollment.changes,
       initialData: enrollment.snapshot,
       builder: (context, snapshot) {
-        final systems = snapshot.data?.trustedSystems ?? const <TrustedSystem>[];
+        final systems =
+            snapshot.data?.trustedSystems ?? const <TrustedSystem>[];
         return AppPage(
           title: 'My Servers',
           actions: [
@@ -40,7 +41,9 @@ class _ServersScreenState extends State<ServersScreen> {
               icon: const Icon(Icons.add_link),
             ),
           ],
-          child: systems.isEmpty ? _EmptyState(onEnroll: _enroll) : _SystemList(systems: systems),
+          child: systems.isEmpty
+              ? _EmptyState(onEnroll: _enroll)
+              : _SystemList(systems: systems),
         );
       },
     );

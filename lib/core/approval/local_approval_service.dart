@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -10,8 +12,8 @@ class LocalApprovalService implements ApprovalService {
   LocalApprovalService({
     required CryptoService crypto,
     required SecureStorageService secureStorage,
-  })  : _crypto = crypto,
-        _secureStorage = secureStorage;
+  }) : _crypto = crypto,
+       _secureStorage = secureStorage;
 
   static const _requestsKey = 'pz.auth.approvals.requests.v1';
   static const _responsesKey = 'pz.auth.approvals.responses.v1';
@@ -29,10 +31,10 @@ class LocalApprovalService implements ApprovalService {
 
   @override
   ApprovalSnapshot get snapshot => ApprovalSnapshot(
-        pendingRequests: List<ApprovalRequest>.unmodifiable(_requests),
-        queuedResponses: List<ApprovalResponse>.unmodifiable(_responses),
-        auditTrail: List<ApprovalAuditEntry>.unmodifiable(_audit),
-      );
+    pendingRequests: List<ApprovalRequest>.unmodifiable(_requests),
+    queuedResponses: List<ApprovalResponse>.unmodifiable(_responses),
+    auditTrail: List<ApprovalAuditEntry>.unmodifiable(_audit),
+  );
 
   @override
   Stream<ApprovalSnapshot> get changes => _changes.stream;
@@ -87,7 +89,8 @@ class LocalApprovalService implements ApprovalService {
 
     final publicKey = await _crypto.ensureDeviceIdentity();
     final decidedAt = DateTime.now().toUtc();
-    final deviceId = 'device-${publicKey.fingerprint.replaceAll(':', '').substring(0, 24)}';
+    final deviceId =
+        'device-${publicKey.fingerprint.replaceAll(':', '').substring(0, 24)}';
     final unsigned = ApprovalResponse(
       requestId: request.id,
       systemId: request.systemId,
@@ -153,11 +156,16 @@ class LocalApprovalService implements ApprovalService {
     String requestId,
     ApprovalSyncStatus status,
   ) async {
-    final responseIndex =
-        _responses.indexWhere((response) => response.requestId == requestId);
+    final responseIndex = _responses.indexWhere(
+      (response) => response.requestId == requestId,
+    );
     if (responseIndex < 0) return;
-    _responses[responseIndex] = _responses[responseIndex].copyWith(syncStatus: status);
-    final auditIndex = _audit.indexWhere((entry) => entry.requestId == requestId);
+    _responses[responseIndex] = _responses[responseIndex].copyWith(
+      syncStatus: status,
+    );
+    final auditIndex = _audit.indexWhere(
+      (entry) => entry.requestId == requestId,
+    );
     if (auditIndex >= 0) {
       final entry = _audit[auditIndex];
       _audit[auditIndex] = ApprovalAuditEntry(
@@ -199,19 +207,17 @@ class LocalApprovalService implements ApprovalService {
   }
 
   Future<void> _writeRequests() => _writeList(
-        _requestsKey,
-        _requests.map((request) => request.toJson()).toList(),
-      );
+    _requestsKey,
+    _requests.map((request) => request.toJson()).toList(),
+  );
 
   Future<void> _writeResponses() => _writeList(
-        _responsesKey,
-        _responses.map((response) => response.toJson()).toList(),
-      );
+    _responsesKey,
+    _responses.map((response) => response.toJson()).toList(),
+  );
 
-  Future<void> _writeAudit() => _writeList(
-        _auditKey,
-        _audit.map((entry) => entry.toJson()).toList(),
-      );
+  Future<void> _writeAudit() =>
+      _writeList(_auditKey, _audit.map((entry) => entry.toJson()).toList());
 
   Future<void> _writeList(String key, Object values) {
     return _secureStorage.write(key: key, value: jsonEncode(values));

@@ -26,12 +26,17 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       stream: approval.changes,
       initialData: approval.snapshot,
       builder: (context, snapshot) {
-        final requests = snapshot.data?.pendingRequests ?? const <ApprovalRequest>[];
-        final request = requests.where((item) => item.id == widget.requestId).firstOrNull;
+        final requests =
+            snapshot.data?.pendingRequests ?? const <ApprovalRequest>[];
+        final request = requests
+            .where((item) => item.id == widget.requestId)
+            .firstOrNull;
         if (request == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Approval Request')),
-            body: const Center(child: Text('This request is no longer pending.')),
+            body: const Center(
+              child: Text('This request is no longer pending.'),
+            ),
           );
         }
         return Scaffold(
@@ -48,7 +53,10 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                     children: [
                       Text(
                         request.title,
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(request.description),
@@ -59,12 +67,27 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                 PZCard(
                   child: Column(
                     children: [
-                      _DetailRow(label: 'Organization', value: request.organization),
-                      _DetailRow(label: 'Trusted system', value: request.systemName),
-                      _DetailRow(label: 'Requested by', value: request.requestedBy),
-                      _DetailRow(label: 'Requesting device', value: request.requestingDevice),
+                      _DetailRow(
+                        label: 'Organization',
+                        value: request.organization,
+                      ),
+                      _DetailRow(
+                        label: 'Trusted system',
+                        value: request.systemName,
+                      ),
+                      _DetailRow(
+                        label: 'Requested by',
+                        value: request.requestedBy,
+                      ),
+                      _DetailRow(
+                        label: 'Requesting device',
+                        value: request.requestingDevice,
+                      ),
                       if (request.sourceIp != null)
-                        _DetailRow(label: 'Source IP', value: request.sourceIp!),
+                        _DetailRow(
+                          label: 'Source IP',
+                          value: request.sourceIp!,
+                        ),
                       _DetailRow(label: 'Request ID', value: request.id),
                       _DetailRow(
                         label: 'Expires',
@@ -99,7 +122,9 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                         icon: _processing
                             ? const SizedBox.square(
                                 dimension: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.check),
                         label: const Text('Approve'),
@@ -114,7 +139,10 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                 const Text(
                   'Your decision is signed on this device. If the server is unavailable, it remains encrypted and pending synchronization.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -124,7 +152,10 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
     );
   }
 
-  Future<void> _decide(ApprovalRequest request, ApprovalDecision decision) async {
+  Future<void> _decide(
+    ApprovalRequest request,
+    ApprovalDecision decision,
+  ) async {
     final services = AppServices.of(context);
     var method = services.authentication.currentSession?.method;
     if (!services.authentication.isAuthenticated) {
@@ -152,9 +183,9 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       Navigator.of(context).pop();
     } on StateError catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${error.message}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -165,11 +196,14 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
     if (!await authentication.hasPin()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Create an app PIN before approving requests.')),
+          const SnackBar(
+            content: Text('Create an app PIN before approving requests.'),
+          ),
         );
       }
       return null;
     }
+    if (!mounted) return null;
     final controller = TextEditingController();
     final pin = await showDialog<String>(
       context: context,
@@ -250,7 +284,11 @@ class _RiskHeader extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.last = false});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.last = false,
+  });
 
   final String label;
   final String value;
@@ -261,14 +299,19 @@ class _DetailRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: last ? null : const Border(bottom: BorderSide(color: AppColors.border)),
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 125,
-            child: Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           Expanded(child: SelectableText(value)),
         ],

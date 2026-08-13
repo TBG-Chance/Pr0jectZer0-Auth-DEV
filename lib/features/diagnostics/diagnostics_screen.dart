@@ -48,9 +48,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     if (report == null) return;
     await Clipboard.setData(ClipboardData(text: report.toSupportReport()));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Support report copied.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Support report copied.')));
   }
 
   @override
@@ -60,61 +60,87 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       actions: [
         IconButton(
           tooltip: 'Refresh',
-          onPressed: _loading ? null : () { setState(() => _loading = true); _load(); },
+          onPressed: _loading
+              ? null
+              : () {
+                  setState(() => _loading = true);
+                  _load();
+                },
           icon: const Icon(Icons.refresh),
         ),
       ],
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text('Unable to read device security: $_error'))
-              : SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      PZCard(
-                        child: Column(
-                          children: [
-                            _DiagnosticItem(label: 'Platform', value: _report!.platform),
-                            _DiagnosticItem(label: 'Device', value: _report!.deviceName),
-                            _DiagnosticItem(label: 'Operating system', value: _report!.osVersion),
-                            _DiagnosticItem(label: 'App version', value: '${_report!.appVersion} (${_report!.buildNumber})'),
-                          ],
+          ? Center(child: Text('Unable to read device security: $_error'))
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  PZCard(
+                    child: Column(
+                      children: [
+                        _DiagnosticItem(
+                          label: 'Platform',
+                          value: _report!.platform,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      PZCard(
-                        child: Column(
-                          children: _report!.checks.map((check) => _DiagnosticItem(
-                            label: check.name,
-                            value: check.status.name,
-                            status: check.status,
-                          )).toList(),
+                        _DiagnosticItem(
+                          label: 'Device',
+                          value: _report!.deviceName,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _copyReport,
-                          icon: const Icon(Icons.copy),
-                          label: const Text('Copy Support Report'),
+                        _DiagnosticItem(
+                          label: 'Operating system',
+                          value: _report!.osVersion,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'The report excludes PINs, private keys, tokens, and server secrets.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                        _DiagnosticItem(
+                          label: 'App version',
+                          value:
+                              '${_report!.appVersion} (${_report!.buildNumber})',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  PZCard(
+                    child: Column(
+                      children: _report!.checks
+                          .map(
+                            (check) => _DiagnosticItem(
+                              label: check.name,
+                              value: check.status.name,
+                              status: check.status,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _copyReport,
+                      icon: const Icon(Icons.copy),
+                      label: const Text('Copy Support Report'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'The report excludes PINs, private keys, tokens, and server secrets.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
 
 class _DiagnosticItem extends StatelessWidget {
-  const _DiagnosticItem({required this.label, required this.value, this.status});
+  const _DiagnosticItem({
+    required this.label,
+    required this.value,
+    this.status,
+  });
   final String label;
   final String value;
   final SecurityCheckStatus? status;
@@ -133,7 +159,11 @@ class _DiagnosticItem extends StatelessWidget {
       title: Text(label),
       trailing: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 190),
-        child: Text(value, textAlign: TextAlign.end, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+        child: Text(
+          value,
+          textAlign: TextAlign.end,
+          style: TextStyle(fontWeight: FontWeight.w700, color: color),
+        ),
       ),
     );
   }

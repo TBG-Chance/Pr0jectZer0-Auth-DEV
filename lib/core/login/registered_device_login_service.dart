@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
@@ -24,6 +26,22 @@ class RegisteredDeviceLoginService implements LoginService {
   static const _signatureDomainV3 = 'pr0jectzer0-login-v3';
   static const _challengeDomainV2 = 'pr0jectzer0-login-challenge-v2';
   static const _challengeDomainV3 = 'pr0jectzer0-login-challenge-v3';
+  static const _allowedParameters = <String>{
+    'v',
+    'server_id',
+    'server_name',
+    'organization',
+    'server_url',
+    'challenge_id',
+    'nonce',
+    'requested_at',
+    'expires_at',
+    'browser_name',
+    'operating_system',
+    'network_address',
+    'verification_code',
+    'signature',
+  };
 
   final CryptoService _crypto;
   final TrustedSystemStore _trustedSystems;
@@ -32,8 +50,21 @@ class RegisteredDeviceLoginService implements LoginService {
 
   @override
   Future<DashboardLoginChallenge> parseChallenge(String payload) async {
-    final uri = Uri.tryParse(payload.trim());
-    if (uri == null || uri.scheme != 'pr0jectzer0' || uri.host != 'login') {
+    final normalized = payload.trim();
+    final uri = Uri.tryParse(normalized);
+    if (normalized.isEmpty ||
+        normalized.length > 16384 ||
+        uri == null ||
+        uri.scheme != 'pr0jectzer0' ||
+        uri.host != 'login' ||
+        uri.path.isNotEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasPort ||
+        uri.hasFragment ||
+        uri.queryParametersAll.values.any((values) => values.length != 1) ||
+        uri.queryParameters.keys.any(
+          (parameter) => !_allowedParameters.contains(parameter),
+        )) {
       throw const LoginApprovalException(
         'This is not a Pr0jectZer0 login code.',
       );
@@ -70,12 +101,12 @@ class RegisteredDeviceLoginService implements LoginService {
     final matches = systems.where(
       (system) => system.systemId == serverId && system.trusted,
     );
-    if (matches.isEmpty) {
+    if (matches.length != 1) {
       throw const LoginApprovalException(
-        'This server is not enrolled on this authentication device.',
+        'This login code does not match exactly one enrolled server.',
       );
     }
-    final trustedSystem = matches.first;
+    final trustedSystem = matches.single;
     var requestedAt = expiresAt;
     var serverName = trustedSystem.displayName;
     var organization = trustedSystem.organization;
@@ -119,13 +150,15 @@ class RegisteredDeviceLoginService implements LoginService {
         trustedSystem,
       );
     }
+    final challengeId = _limitedContext(requiredValue('challenge_id'), 512);
+    final nonce = _limitedContext(requiredValue('nonce'), 512);
     return DashboardLoginChallenge(
       version: version!,
       serverId: serverId,
       serverName: serverName,
       organization: organization,
-      challengeId: requiredValue('challenge_id'),
-      nonce: requiredValue('nonce'),
+      challengeId: challengeId,
+      nonce: nonce,
       requestedAt: requestedAt,
       expiresAt: expiresAt,
       browserName: browserName,

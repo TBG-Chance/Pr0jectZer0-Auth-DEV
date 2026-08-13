@@ -13,10 +13,7 @@ abstract interface class AuthenticationService {
 
   Future<void> createPin(String pin);
 
-  Future<void> changePin({
-    required String currentPin,
-    required String newPin,
-  });
+  Future<void> changePin({required String currentPin, required String newPin});
 
   Future<AuthenticationResult> authenticateWithPin(String pin);
 

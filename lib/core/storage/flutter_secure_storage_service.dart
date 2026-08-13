@@ -5,13 +5,14 @@ import 'secure_storage_service.dart';
 
 class FlutterSecureStorageService implements SecureStorageService {
   FlutterSecureStorageService({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(),
-              iOptions: IOSOptions(
-                accessibility: KeychainAccessibility.first_unlock_this_device,
-              ),
-            );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(),
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+            ),
+          );
 
   final FlutterSecureStorage _storage;
   bool _initialized = false;
@@ -41,10 +42,7 @@ class FlutterSecureStorageService implements SecureStorageService {
   }
 
   @override
-  Future<void> write({
-    required String key,
-    required String value,
-  }) async {
+  Future<void> write({required String key, required String value}) async {
     _ensureReady();
     await _storage.write(key: key, value: value);
   }

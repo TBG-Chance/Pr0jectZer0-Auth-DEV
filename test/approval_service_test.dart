@@ -30,7 +30,10 @@ void main() {
 
     expect(approvals.snapshot.pendingRequests, hasLength(1));
 
-    final reloaded = LocalApprovalService(crypto: crypto, secureStorage: storage);
+    final reloaded = LocalApprovalService(
+      crypto: crypto,
+      secureStorage: storage,
+    );
     await reloaded.initialize();
     expect(reloaded.snapshot.pendingRequests.single.id, request.id);
     await reloaded.dispose();
@@ -49,7 +52,10 @@ void main() {
     expect(response.syncStatus, ApprovalSyncStatus.pending);
     expect(approvals.snapshot.pendingRequests, isEmpty);
     expect(approvals.snapshot.queuedResponses, hasLength(1));
-    expect(approvals.snapshot.auditTrail.single.decision, ApprovalDecision.approve);
+    expect(
+      approvals.snapshot.auditTrail.single.decision,
+      ApprovalDecision.approve,
+    );
   });
 
   test('updates response synchronization status', () async {

@@ -58,20 +58,20 @@ class ApprovalRequest {
   }
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'id': id,
-        'systemId': systemId,
-        'systemName': systemName,
-        'organization': organization,
-        'title': title,
-        'description': description,
-        'requestedBy': requestedBy,
-        'requestingDevice': requestingDevice,
-        'sourceIp': sourceIp,
-        'createdAt': createdAt.toUtc().toIso8601String(),
-        'expiresAt': expiresAt.toUtc().toIso8601String(),
-        'nonce': nonce,
-        'risk': risk.name,
-      };
+    'id': id,
+    'systemId': systemId,
+    'systemName': systemName,
+    'organization': organization,
+    'title': title,
+    'description': description,
+    'requestedBy': requestedBy,
+    'requestingDevice': requestingDevice,
+    'sourceIp': sourceIp,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'expiresAt': expiresAt.toUtc().toIso8601String(),
+    'nonce': nonce,
+    'risk': risk.name,
+  };
 }
 
 class ApprovalResponse {
@@ -100,16 +100,17 @@ class ApprovalResponse {
   final String authenticationMethod;
 
   Map<String, Object> unsignedPayload() => <String, Object>{
-        'requestId': requestId,
-        'systemId': systemId,
-        'deviceId': deviceId,
-        'keyId': keyId,
-        'decision': decision.name,
-        'decidedAt': decidedAt.toUtc().toIso8601String(),
-        'requestNonce': requestNonce,
-      };
+    'requestId': requestId,
+    'systemId': systemId,
+    'deviceId': deviceId,
+    'keyId': keyId,
+    'decision': decision.name,
+    'decidedAt': decidedAt.toUtc().toIso8601String(),
+    'requestNonce': requestNonce,
+  };
 
-  List<int> canonicalPayloadBytes() => utf8.encode(jsonEncode(unsignedPayload()));
+  List<int> canonicalPayloadBytes() =>
+      utf8.encode(jsonEncode(unsignedPayload()));
 
   ApprovalResponse copyWith({ApprovalSyncStatus? syncStatus}) {
     return ApprovalResponse(
@@ -136,17 +137,19 @@ class ApprovalResponse {
       decidedAt: DateTime.parse(json['decidedAt'] as String).toUtc(),
       requestNonce: json['requestNonce'] as String,
       signature: json['signature'] as String,
-      syncStatus: ApprovalSyncStatus.values.byName(json['syncStatus'] as String),
+      syncStatus: ApprovalSyncStatus.values.byName(
+        json['syncStatus'] as String,
+      ),
       authenticationMethod: json['authenticationMethod'] as String,
     );
   }
 
   Map<String, Object> toJson() => <String, Object>{
-        ...unsignedPayload(),
-        'signature': signature,
-        'syncStatus': syncStatus.name,
-        'authenticationMethod': authenticationMethod,
-      };
+    ...unsignedPayload(),
+    'signature': signature,
+    'syncStatus': syncStatus.name,
+    'authenticationMethod': authenticationMethod,
+  };
 }
 
 class ApprovalAuditEntry {
@@ -176,19 +179,21 @@ class ApprovalAuditEntry {
       decision: ApprovalDecision.values.byName(json['decision'] as String),
       decidedAt: DateTime.parse(json['decidedAt'] as String).toUtc(),
       authenticationMethod: json['authenticationMethod'] as String,
-      syncStatus: ApprovalSyncStatus.values.byName(json['syncStatus'] as String),
+      syncStatus: ApprovalSyncStatus.values.byName(
+        json['syncStatus'] as String,
+      ),
     );
   }
 
   Map<String, Object> toJson() => <String, Object>{
-        'requestId': requestId,
-        'systemId': systemId,
-        'title': title,
-        'decision': decision.name,
-        'decidedAt': decidedAt.toUtc().toIso8601String(),
-        'authenticationMethod': authenticationMethod,
-        'syncStatus': syncStatus.name,
-      };
+    'requestId': requestId,
+    'systemId': systemId,
+    'title': title,
+    'decision': decision.name,
+    'decidedAt': decidedAt.toUtc().toIso8601String(),
+    'authenticationMethod': authenticationMethod,
+    'syncStatus': syncStatus.name,
+  };
 }
 
 class ApprovalSnapshot {

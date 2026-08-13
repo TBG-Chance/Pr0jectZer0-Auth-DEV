@@ -5,7 +5,7 @@ class AppConstants {
 
   static const String productName = 'Pr0jectZer0';
 
-  static const String version = '0.1.0';
+  static const String version = '0.6.0-beta.1';
 
   static const String tagline = 'Trust Every Approval.';
 }

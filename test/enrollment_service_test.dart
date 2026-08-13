@@ -67,6 +67,17 @@ void main() {
     expect(invitation.enrollmentId, 'enroll-1');
     expect(invitation.systemId, 'server-1');
     expect(invitation.nonce, 'one-time-secret');
+
+    final unsupported = Uri.parse(payload).replace(
+      queryParameters: <String, String>{
+        ...Uri.parse(payload).queryParameters,
+        'unexpected': 'value',
+      },
+    );
+    await expectLater(
+      enrollment.parseInvitation(unsupported.toString()),
+      throwsA(isA<EnrollmentException>()),
+    );
   });
 
   test('verifies a signed HTTPS version 2 enrollment invitation', () async {
@@ -311,6 +322,19 @@ void main() {
         _payload(
           issuedAt: now.subtract(const Duration(hours: 2)),
           expiresAt: now.subtract(const Duration(hours: 1)),
+        ),
+      ),
+      throwsA(isA<EnrollmentException>()),
+    );
+  });
+
+  test('rejects enrollment invitations issued too far in the future', () async {
+    final issuedAt = DateTime.now().toUtc().add(const Duration(minutes: 5));
+    await expectLater(
+      enrollment.parseInvitation(
+        _payload(
+          issuedAt: issuedAt,
+          expiresAt: issuedAt.add(const Duration(minutes: 5)),
         ),
       ),
       throwsA(isA<EnrollmentException>()),

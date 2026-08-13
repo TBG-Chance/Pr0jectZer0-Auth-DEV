@@ -1,15 +1,6 @@
-enum AuthenticationMethod {
-  pin,
-  biometric,
-  systemApproval,
-}
+enum AuthenticationMethod { pin, biometric, systemApproval }
 
-enum AuthenticationStatus {
-  locked,
-  authenticating,
-  authenticated,
-  failed,
-}
+enum AuthenticationStatus { locked, authenticating, authenticated, failed }
 
 class AuthenticationSession {
   final String id;
@@ -46,14 +37,10 @@ class AuthenticationResult {
   });
 
   const AuthenticationResult.success(AuthenticationSession session)
-      : this._(success: true, session: session);
+    : this._(success: true, session: session);
 
   const AuthenticationResult.failure({
     required String errorCode,
     required String message,
-  }) : this._(
-          success: false,
-          errorCode: errorCode,
-          message: message,
-        );
+  }) : this._(success: false, errorCode: errorCode, message: message);
 }

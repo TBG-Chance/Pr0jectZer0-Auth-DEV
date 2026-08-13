@@ -10,7 +10,7 @@ import 'crypto_service.dart';
 
 class SecureEd25519CryptoService implements CryptoService {
   SecureEd25519CryptoService(this._storage, {Ed25519? algorithm})
-      : _algorithm = algorithm ?? Ed25519();
+    : _algorithm = algorithm ?? Ed25519();
 
   static const _algorithmName = 'Ed25519';
   static const _recordVersion = 1;

@@ -16,12 +16,12 @@ class DevicePublicKey {
   final DateTime createdAt;
 
   Map<String, Object> toJson() => <String, Object>{
-        'algorithm': algorithm,
-        'keyId': keyId,
-        'publicKey': publicKeyBase64Url,
-        'fingerprint': fingerprint,
-        'createdAt': createdAt.toUtc().toIso8601String(),
-      };
+    'algorithm': algorithm,
+    'keyId': keyId,
+    'publicKey': publicKeyBase64Url,
+    'fingerprint': fingerprint,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+  };
 
   String toJsonString() => jsonEncode(toJson());
 }
@@ -40,9 +40,9 @@ class SignatureEnvelope {
   final DateTime signedAt;
 
   Map<String, Object> toJson() => <String, Object>{
-        'algorithm': algorithm,
-        'keyId': keyId,
-        'signature': signatureBase64Url,
-        'signedAt': signedAt.toUtc().toIso8601String(),
-      };
+    'algorithm': algorithm,
+    'keyId': keyId,
+    'signature': signatureBase64Url,
+    'signedAt': signedAt.toUtc().toIso8601String(),
+  };
 }

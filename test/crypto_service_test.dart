@@ -34,10 +34,7 @@ void main() {
     final payload = utf8.encode('approval-request-123');
     final signature = await crypto.sign(payload);
 
-    expect(
-      await crypto.verify(payload: payload, signature: signature),
-      isTrue,
-    );
+    expect(await crypto.verify(payload: payload, signature: signature), isTrue);
     expect(
       await crypto.verify(
         payload: utf8.encode('modified'),
@@ -47,17 +44,20 @@ void main() {
     );
   });
 
-  test('rotation replaces the identity and invalidates old signatures', () async {
-    final first = await crypto.ensureDeviceIdentity();
-    final payload = utf8.encode('challenge');
-    final signature = await crypto.sign(payload);
+  test(
+    'rotation replaces the identity and invalidates old signatures',
+    () async {
+      final first = await crypto.ensureDeviceIdentity();
+      final payload = utf8.encode('challenge');
+      final signature = await crypto.sign(payload);
 
-    final second = await crypto.rotateDeviceIdentity();
+      final second = await crypto.rotateDeviceIdentity();
 
-    expect(second.keyId, isNot(first.keyId));
-    expect(
-      await crypto.verify(payload: payload, signature: signature),
-      isFalse,
-    );
-  });
+      expect(second.keyId, isNot(first.keyId));
+      expect(
+        await crypto.verify(payload: payload, signature: signature),
+        isFalse,
+      );
+    },
+  );
 }

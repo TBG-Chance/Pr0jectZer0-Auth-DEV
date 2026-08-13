@@ -14,11 +14,14 @@ import 'device_security_service.dart';
 class PlatformDeviceSecurityService implements DeviceSecurityService {
   PlatformDeviceSecurityService({required this._secureStorage});
 
-  static const MethodChannel _channel = MethodChannel('pr0jectzer0/device_security');
+  static const MethodChannel _channel = MethodChannel(
+    'pr0jectzer0/device_security',
+  );
   final SecureStorageService _secureStorage;
   final LocalAuthentication _localAuth = LocalAuthentication();
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
-  final StreamController<DeviceSecurityReport> _controller = StreamController.broadcast();
+  final StreamController<DeviceSecurityReport> _controller =
+      StreamController.broadcast();
 
   DeviceSecurityReport? _currentReport;
   bool _disposed = false;
@@ -57,26 +60,28 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
           status: native.screenLockEnabled == true
               ? SecurityCheckStatus.passed
               : native.screenLockEnabled == false
-                  ? SecurityCheckStatus.failed
-                  : SecurityCheckStatus.unknown,
+              ? SecurityCheckStatus.failed
+              : SecurityCheckStatus.unknown,
           detail: native.screenLockEnabled == true
               ? 'A device credential is configured.'
               : native.screenLockEnabled == false
-                  ? 'No secure device credential is configured.'
-                  : 'This platform did not expose screen-lock state.',
+              ? 'No secure device credential is configured.'
+              : 'This platform did not expose screen-lock state.',
         ),
         SecurityCheck(
           name: 'Biometrics',
           status: biometrics.enrolled
               ? SecurityCheckStatus.passed
               : biometrics.supported
-                  ? SecurityCheckStatus.failed
-                  : SecurityCheckStatus.unavailable,
+              ? SecurityCheckStatus.failed
+              : SecurityCheckStatus.unavailable,
           detail: biometrics.detail,
         ),
         SecurityCheck(
           name: 'Secure storage',
-          status: secureStorage ? SecurityCheckStatus.passed : SecurityCheckStatus.failed,
+          status: secureStorage
+              ? SecurityCheckStatus.passed
+              : SecurityCheckStatus.failed,
           detail: secureStorage
               ? 'Platform-protected storage is readable and writable.'
               : 'Secure storage probe failed.',
@@ -86,8 +91,8 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
           status: native.hardwareBacked == true
               ? SecurityCheckStatus.passed
               : native.hardwareBacked == false
-                  ? SecurityCheckStatus.unavailable
-                  : SecurityCheckStatus.unknown,
+              ? SecurityCheckStatus.unavailable
+              : SecurityCheckStatus.unknown,
           detail: native.hardwareBacked == true
               ? 'Hardware-backed key protection is available.'
               : 'Hardware backing could not be verified.',
@@ -97,21 +102,21 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
           status: native.compromised == true
               ? SecurityCheckStatus.failed
               : native.compromised == false
-                  ? SecurityCheckStatus.passed
-                  : SecurityCheckStatus.unknown,
+              ? SecurityCheckStatus.passed
+              : SecurityCheckStatus.unknown,
           detail: native.compromised == true
               ? 'Root or jailbreak indicators were detected.'
               : native.compromised == false
-                  ? 'No basic compromise indicators were detected.'
-                  : 'Integrity state is unavailable on this platform.',
+              ? 'No basic compromise indicators were detected.'
+              : 'Integrity state is unavailable on this platform.',
         ),
         SecurityCheck(
           name: 'Emulator or simulator',
           status: device.isPhysical == false
               ? SecurityCheckStatus.failed
               : device.isPhysical == true
-                  ? SecurityCheckStatus.passed
-                  : SecurityCheckStatus.unknown,
+              ? SecurityCheckStatus.passed
+              : SecurityCheckStatus.unknown,
           detail: device.isPhysical == false
               ? 'The app is running on an emulator or simulator.'
               : 'The app appears to be running on physical hardware.',
@@ -121,18 +126,22 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
           status: native.developerMode == true
               ? SecurityCheckStatus.failed
               : native.developerMode == false
-                  ? SecurityCheckStatus.passed
-                  : SecurityCheckStatus.unknown,
+              ? SecurityCheckStatus.passed
+              : SecurityCheckStatus.unknown,
           detail: native.developerMode == true
               ? 'Developer options are enabled.'
               : native.developerMode == false
-                  ? 'Developer options are disabled.'
-                  : 'Developer-mode state is unavailable.',
+              ? 'Developer options are disabled.'
+              : 'Developer-mode state is unavailable.',
         ),
         SecurityCheck(
           name: 'Debug build',
-          status: kDebugMode ? SecurityCheckStatus.failed : SecurityCheckStatus.passed,
-          detail: kDebugMode ? 'This is a debug build.' : 'This is not a debug build.',
+          status: kDebugMode
+              ? SecurityCheckStatus.failed
+              : SecurityCheckStatus.passed,
+          detail: kDebugMode
+              ? 'This is a debug build.'
+              : 'This is not a debug build.',
         ),
         const SecurityCheck(
           name: 'Telemetry',
@@ -153,7 +162,8 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
       return _DeviceIdentity(
         platform: 'Android',
         name: '${info.manufacturer} ${info.model}'.trim(),
-        osVersion: 'Android ${info.version.release} (SDK ${info.version.sdkInt})',
+        osVersion:
+            'Android ${info.version.release} (SDK ${info.version.sdkInt})',
         isPhysical: info.isPhysicalDevice,
       );
     }
@@ -184,8 +194,8 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
         detail: available.isNotEmpty
             ? 'Enrolled: ${available.map((type) => type.name).join(', ')}.'
             : supported
-                ? 'Biometric hardware is supported, but none are enrolled.'
-                : 'Biometric authentication is unavailable.',
+            ? 'Biometric hardware is supported, but none are enrolled.'
+            : 'Biometric authentication is unavailable.',
       );
     } on Object {
       return const _BiometricState(
@@ -211,7 +221,9 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
 
   Future<_NativeChecks> _readNativeChecks() async {
     try {
-      final values = await _channel.invokeMapMethod<String, Object?>('getSecurityState');
+      final values = await _channel.invokeMapMethod<String, Object?>(
+        'getSecurityState',
+      );
       return _NativeChecks(
         screenLockEnabled: values?['screenLockEnabled'] as bool?,
         compromised: values?['compromised'] as bool?,
@@ -234,7 +246,12 @@ class PlatformDeviceSecurityService implements DeviceSecurityService {
 }
 
 class _DeviceIdentity {
-  const _DeviceIdentity({required this.platform, required this.name, required this.osVersion, required this.isPhysical});
+  const _DeviceIdentity({
+    required this.platform,
+    required this.name,
+    required this.osVersion,
+    required this.isPhysical,
+  });
   final String platform;
   final String name;
   final String osVersion;
@@ -242,14 +259,23 @@ class _DeviceIdentity {
 }
 
 class _BiometricState {
-  const _BiometricState({required this.supported, required this.enrolled, required this.detail});
+  const _BiometricState({
+    required this.supported,
+    required this.enrolled,
+    required this.detail,
+  });
   final bool supported;
   final bool enrolled;
   final String detail;
 }
 
 class _NativeChecks {
-  const _NativeChecks({this.screenLockEnabled, this.compromised, this.developerMode, this.hardwareBacked});
+  const _NativeChecks({
+    this.screenLockEnabled,
+    this.compromised,
+    this.developerMode,
+    this.hardwareBacked,
+  });
   final bool? screenLockEnabled;
   final bool? compromised;
   final bool? developerMode;

@@ -1,30 +1,41 @@
-# pr0jectzer0_auth
+# Pr0jectZer0 Auth
 
-A new Flutter project.
+Pr0jectZer0 Auth is the Android companion authenticator for a self-hosted Pr0jectZer0 server. It enrolls a device from a signed dashboard QR code and uses that device's Ed25519 key to approve dashboard sign-in requests.
 
-## Getting Started
+This is the active development repository. It is not yet approved for production use or public distribution.
 
-This project is a starting point for a Flutter application.
+## Security model
 
-A few resources to get you started if this is your first Flutter project:
+- Enrollment accepts signed `pr0jectzer0://enroll` payloads and administrator activation payloads.
+- Login approval accepts signed `pr0jectzer0://login` payloads from an enrolled server.
+- The app connects to the canonical HTTPS origin carried by signed enrollment data; the service port is not hard-coded in the app.
+- Version 3 enrollment pins the installation CA for local HTTPS deployments.
+- The device private key and salted PIN verifier stay in platform-protected storage.
+- Approval requires biometrics or the app PIN, which has persistent retry lockout.
+- Android backup, cleartext release traffic, and screenshots are disabled.
+- Release builds fail unless the protected Android upload key is configured.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+The open-beta installation floor is Android 14 (API 34), and release builds target Android 16 (API 36). See [the Android support matrix](docs/ANDROID_SUPPORT_MATRIX.md).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Server contract
 
-## Secure storage foundation
+- Complete enrollment: `POST /api/v1/auth/enrollment/complete`
+- Approve dashboard sign-in: `POST /api/v1/auth/login/approve`
 
-Sensitive authentication values are stored through `SecureStorageService`.
-The production implementation uses `flutter_secure_storage`, backed by Android
-KeyStore and Apple Keychain. PINs are never stored directly: the app stores a
-randomly salted PBKDF2-HMAC-SHA256 verifier and compares derived values in
-constant time.
+The browser polls for challenge completion. Selecting **Deny** on the phone dismisses the request locally and lets the server challenge expire.
 
-Android auto-backup is disabled because KeyStore keys are device-bound and
-restoring encrypted preferences to another device can make them unreadable.
-The open-beta minimum is Android 14 (API 34), and release builds target Android
-16 (API 36). See `docs/ANDROID_SUPPORT_MATRIX.md` for the tested device policy.
+## Validate locally
+
+```text
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+```
+
+CI runs these checks for pull requests and pushes to `main`. Signed beta bundles are produced separately by the protected Android beta release workflow.
+
+## Release preparation
+
+Follow [the Android beta release guide](docs/ANDROID_BETA_RELEASE.md) to configure the upload certificate and Google Play Internal Testing. See [push readiness](docs/PUSH_READINESS.md) for the remaining beta gates and [the security policy](SECURITY.md) for private vulnerability reporting.
